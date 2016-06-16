@@ -15,19 +15,17 @@ static pthread_t pthread;
 
 static void* start_thread(void* args) {
   char buf[1] = {0};
-  close(a2b_write);
-  close(b2a_read);
   while (1) {
-    printf ("THREAD: waiting message\n");
+
     if (read(a2b_read, buf, 1) == -1) {
         err(1, NULL);
     }
-    printf ("THREAD: swapping buffers\n");
+
     glfwMakeContextCurrent(window);
     glfwSwapBuffers(window);
     glfwMakeContextCurrent(NULL);
-    printf ("THREAD: sending message\n");
-    send(b2a_write, buf, 1);
+
+    write(b2a_write, buf, 1);
   }
 }
 
@@ -48,11 +46,11 @@ EOF
   (wait-swapper-thread!))
 
 (define (signal-swapper-thread!)
-  (print "MAIN: sending message")
-  (write-char #\null a2b-write-port))
+  (write-char #\null a2b-write-port)
+  (flush-output a2b-write-port))
 
 (define (wait-swapper-thread!)
-  (print "MAIN: waiting message")
+  (thread-wait-for-i/o! b2a-read #:input)
   (read-char b2a-read-port))
 
 (define-values (a2b-read a2b-write) (create-pipe))
@@ -62,11 +60,22 @@ EOF
    "a2b_read = a; a2b_write = b; b2a_read = c; b2a_write = d;")
  a2b-read a2b-write b2a-read b2a-write)
 
-(thread-start! (lambda () (print "BUSY: hello") (thread-sleep! 1)))
-(start-thread!)
+(thread-start!
+ (lambda ()
+   (let loop ()
+     (print "WORKER1: hello")
+     (thread-sleep! 1)
+     (loop))))
 
-(file-close a2b-read)
-(file-close b2a-write)
+(thread-start!
+ (lambda ()
+   (thread-sleep! 0.5)
+   (let loop ()
+     (print "WORKER2: hello")
+     (thread-sleep! 1)
+     (loop))))
+
+(start-thread!)
 
 (define a2b-write-port (open-output-file* a2b-write))
 (define b2a-read-port (open-input-file* b2a-read))
@@ -78,17 +87,16 @@ EOF
     (gl:Clear gl:COLOR_BUFFER_BIT)
     (gl:LoadIdentity)
     (gl:Rotatef (* 100 (get-time)) 0 0 1)
-    (gl:Begin gl:TRIANGLES)
-    (gl:Vertex2f 0 0.2)
+    (gl:Begin gl:QUADS)
+    (gl:Vertex2f -0.2 0.2)
+    (gl:Vertex2f 0.2 0.2)
     (gl:Vertex2f 0.2 -0.2)
     (gl:Vertex2f -0.2 -0.2)
     (gl:End)
     ;;(swap-buffers (window))
     (let ((ctx (window)))
       (make-context-current #f)
-      (print "MAIN: calling swapper")
       (external-swap-buffers)
-      (print "MAIN: returning to loop")
       (make-context-current ctx))
     (unless (window-should-close (window))
       (loop))))

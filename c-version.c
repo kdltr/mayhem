@@ -5,30 +5,29 @@
 
 static pthread_t thread;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-static char done = 0;
+static int a2b[2];
+static int b2a[2];
 
 static GLFWwindow* window;
 
 static void* start_thread(void* args) {
-  pthread_mutex_lock(&mutex);
-  pthread_cond_signal(&cond);
+  char buf[1] = {0};
 
   while (1) {
-    pthread_cond_wait(&cond, &mutex);
+    read(a2b[0], buf, 1);
 
     glfwMakeContextCurrent(window);
     glfwSwapBuffers(window);
     glfwMakeContextCurrent(NULL);
 
-    done = 1;
-    pthread_cond_signal(&cond);
+    write(b2a[1], buf, 1);
   }
 }
 
 int main(void) {
   double lastTime = glfwGetTime();
+  char buf[1] = {0};
+  
   /* Initialize the library */
   if (!glfwInit())
     return -1;
@@ -43,13 +42,13 @@ int main(void) {
   }
 
   /* Make the window's context current */
-  //pthread_mutex_lock(&mutex);
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
 
-  pthread_mutex_lock(&mutex);
+  pipe(a2b);
+  pipe(b2a);
+
   pthread_create(&thread, NULL, start_thread, NULL);
-  pthread_cond_wait(&cond, &mutex);
   
   /* Loop until the user closes the window */
   while (!glfwWindowShouldClose(window)) {
@@ -69,16 +68,10 @@ int main(void) {
     
     /* Swap front and back buffers */
     glfwMakeContextCurrent(NULL);
-    pthread_cond_signal(&cond);
-    pthread_unlock_mutex(&mutex);
+    write(a2b[1], buf, 1);
     printf("Doing stuff...\n");
-    usleep(100);
-    if (done == 1) {
-      done = 0;
-    }
-    else {
-      pthread_cond_wait(&cond, &mutex);
-    }
+    //usleep(15000);
+    read(b2a[0], buf, 1);
     glfwMakeContextCurrent(window);
 
     
