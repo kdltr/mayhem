@@ -10,6 +10,15 @@
   (function signal-function)
   (thread signal-thread signal-thread-set!))
 
+(define primitive-channels
+  (make-parameter '()))
+
+(define (register-primitive-channel! chan)
+  (primitive-channels (cons chan (primitive-channels))))
+
+(define (broadcast-message! msg)
+  (for-each (cut gochan-send <> msg) (primitive-channels)))
+
 (define (make-signal-thread! sig function)
   (signal-thread-set!
    sig
@@ -27,8 +36,16 @@
       (else  (error "thread in strange state" signal thread))))
   (for-each start-signal-graph! (parents signal)))
 
-(define (make-signal function)
-  (let* ((sig (%make-signal '() '() '() function #f)))
+;; TODO do that better, this is ugly
+(define (terminate-signal-graph! signal)
+  (let ((thread (signal-thread signal)))
+    (thread-terminate! thread)
+    (for-each terminate-signal-graph! (parents signal))))
+
+(define (make-primitive-signal function)
+  (let* ((input-channel (gochan))
+         (sig (%make-signal (list input-channel) '() '() function #f)))
+    (register-primitive-channel! input-channel)
     (make-signal-thread! sig function)
     sig))
 
@@ -42,4 +59,3 @@
      channels)
     (make-signal-thread! sig function)
     sig))
-
