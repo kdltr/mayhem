@@ -19,7 +19,7 @@
 (define (broadcast-message! msg)
   (for-each (cut gochan-send <> msg) (primitive-channels)))
 
-(define (make-signal-thread! sig function)
+(define (make-signal-thread! sig)
   (signal-thread-set!
    sig
    (make-thread
@@ -46,7 +46,7 @@
   (let* ((input-channel (gochan))
          (sig (%make-signal (list input-channel) '() '() function #f)))
     (register-primitive-channel! input-channel)
-    (make-signal-thread! sig function)
+    (make-signal-thread! sig)
     sig))
 
 (define (make-registered-signal parents function)
@@ -57,5 +57,5 @@
        (emitters-set! s (cons c (emitters s))))
      parents
      channels)
-    (make-signal-thread! sig function)
+    (make-signal-thread! sig)
     sig))
