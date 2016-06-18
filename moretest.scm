@@ -2,18 +2,21 @@
 
 (load "frp")
 
-(trace gochan-broadcast gochan-send gochan-receive)
+;;(trace gochan-broadcast gochan-send gochan-receive)
 
 (define clock
-  (make-primitive-signal 0))
+  (make-primitive-signal (current-seconds)))
 
-(define receiver (gochan))
-(primitive-emitters-set! clock (list receiver))
+(define printer
+  (make-registered-signal
+   (list clock)
+   (lambda (state clock)
+     (print clock)
+     clock)))
 
-(thread-start! (primitive-thread clock))
+(start-signal-graph! printer)
 
-(print (default-value clock))
 (let loop ()
   (notify-primitive-signal! clock (current-seconds))
-  (print (gochan-receive receiver))
+  (thread-sleep! 1)
   (loop))

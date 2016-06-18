@@ -5,22 +5,10 @@
 ;;(trace gochan-send gochan-receive)
 
 (define words
-  (make-primitive-signal
-   (lambda (state message)
-     (match message
-       (('word w)
-        (list 'change w))
-       (else
-        (list 'no-change state))))))
+  (make-primitive-signal "hello"))
 
 (define cursor-position
-  (make-primitive-signal
-   (lambda (state message)
-     (match message
-       (('cursor-position x y)
-        (list 'change (list x y)))
-       (else
-        (list 'no-change state))))))
+  (make-primitive-signal '(0 0)))
 
 (define translate
   (make-registered-signal
@@ -43,19 +31,14 @@
 
 (start-signal-graph! printer)
 
-(define words-input (car (receptors words)))
-(define cursor-input (car (receptors cursor-position)))
-
-(start-signal-graph! printer)
-
 (thread-start!
  (lambda ()
    (let loop ()
-     (gochan-send words-input '(word "hello"))
+     (notify-primitive-signal! words "hello")
      (thread-sleep! 1)
      (loop))))
 
 (let loop ()
-  (gochan-send cursor-input (list 'cursor-position (random 300) (random 300)))
+  (notify-primitive-signal! cursor-position (list (random 300) (random 300)))
   (thread-sleep! 0.2)
   (loop))

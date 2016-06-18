@@ -3,11 +3,12 @@
   primitive-signal?
   (receptor primitive-receptor primitive-receptor-set!)
   (emitters primitive-emitters primitive-emitters-set!)
-  (default-value default-value)
+  (default-value %default-value)
   (identifier identifier identifier-set!)
   (thread primitive-thread primitive-thread-set!))
 
-
+(define (default-value o)
+  (and (primitive-signal? o) (%default-value o)))
 
 (define (primitive-signal-loop signal)
   (lambda ()
