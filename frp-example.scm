@@ -1,59 +1,57 @@
-(use glfw3 gl nonblocking-swap-buffers matchable)
+(import scheme chicken data-structures srfi-18)
+(use glfw3 gl nonblocking-swap-buffers matchable frp-lowlevel gochan)
 
-(load "frp")
+(include "frp")
+(import frp)
 
-;; (use trace)
-;; (trace gochan-send gochan-receive)
+(define new-frame (make-primitive-signal 'new-frame))
+(define cursor-position (make-primitive-signal '(0 0)))
 
-(define new-frame
-  (make-primitive-signal 'new-frame))
+(define frame-time (map (lambda (_) (get-time)) new-frame))
+(define num-frames (fold + 0 (map (constantly 1) new-frame)))
 
-(define cursor-position
-  (make-primitive-signal '(0 0)))
-
-;; (define clock (signal-map get-time new-frame))
-;; or something like that
-(define frame-time
-  (make-registered-signal
-   (list new-frame)
-   (lambda (state new-frame)
-     (get-time))))
+(define square-angle (map (lambda (time) (* 100 time)) frame-time))
+(define square-translation
+  (map (lambda (cursor) (let ((x (car cursor)) (y (cadr cursor)))
+                          (list (sub1 (/ x 300)) (- (sub1 (/ y 200))) 0)))
+       cursor-position))
+(define color (map (lambda (num) (/ (modulo num 61) 60)) num-frames))
 
 (define scene
-  (make-registered-signal
-   (list frame-time cursor-position)
-   (lambda (state clock cursor-position)
+  (map
+   (lambda (angle square-translation color)
      ;; represent scene as a thunk for now
      (lambda ()
        (gl:Clear gl:COLOR_BUFFER_BIT)
        (gl:LoadIdentity)
-       (let ((x (car cursor-position))
-             (y (cadr cursor-position
-                      )))
-         (gl:Translatef (sub1 (/ x 300)) (- (sub1 (/ y 200))) 0))
-       (gl:Rotatef (* 100 clock) 0 0 1)
+       (apply gl:Translatef square-translation)
+       (gl:Rotatef angle 0 0 1)
        (gl:Begin gl:QUADS)
+       (gl:Color3f color 0 0)
        (gl:Vertex2f -0.2 0.2)
+       (gl:Color3f 0 color 0)
        (gl:Vertex2f 0.2 0.2)
+       (gl:Color3f 0 0 color)
        (gl:Vertex2f 0.2 -0.2)
+       (gl:Color3f color 0 color)
        (gl:Vertex2f -0.2 -0.2)
-       (gl:End)))))
+       (gl:End)))
+   square-angle square-translation color))
+
 
 (define scene-receiver (gochan))
 (emitters-set! scene (list scene-receiver))
-
 
 (cursor-position-callback
  (lambda (window x y)
    (notify-primitive-signal! cursor-position (list x y))))
 
-(with-window (600 400 "GLFW3 Test" resizable: #f)
+(with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 1)
   (start-signal-graph! scene)
   (let loop ()
     (nonblocking-swap-buffers)
     (gc #f)
     (wait-vblank)
-    ;; (swap-buffers (window))
     (poll-events)
     (notify-primitive-signal! new-frame 'new-frame)
     (thread-yield!)
@@ -65,3 +63,4 @@
                  (cadar msg))))
     (unless (window-should-close (window))
       (loop))))
+

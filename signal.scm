@@ -22,9 +22,10 @@
         (gochan-broadcast (emitters sig) out-msg)
         (loop new-state)))))
 
-(define (make-registered-signal parents function)
+(define no-default (list 'no-default))
+(define (make-registered-signal parents function #!optional (default no-default))
   (let* ((parents-defaults (map (lambda (s) (or (default-value s) (initial-value s))) parents))
-         (init (apply function #f parents-defaults))
+         (init (if (eq? default no-default) (apply function #f parents-defaults) default))
          (channels (map (lambda (_) (gochan)) parents))
          (sig (%make-signal channels '() parents function #f init))
          (signal-thunk (signal-loop sig)))
