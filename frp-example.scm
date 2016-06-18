@@ -41,10 +41,6 @@
 (define scene-receiver (gochan))
 (emitters-set! scene (list scene-receiver))
 
-(cursor-position-callback
- (lambda (window x y)
-   (notify-primitive-signal! cursor-position (list x y))))
-
 (with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 1)
   (start-signal-graph! scene)
   (let loop ()
@@ -62,4 +58,3 @@
                  (cadar msg))))
     (unless (window-should-close (window))
       (loop))))
-
