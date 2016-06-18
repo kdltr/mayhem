@@ -1,11 +1,10 @@
 (import scheme chicken data-structures srfi-18)
-(use glfw3 gl nonblocking-swap-buffers matchable frp-lowlevel gochan)
+(use glfw3 gl nonblocking-swap-buffers matchable frp-lowlevel gochan frp)
 
-(include "frp")
-(import frp)
+(load "frp-glfw")
+(import frp-glfw)
 
 (define new-frame (make-primitive-signal 'new-frame))
-(define cursor-position (make-primitive-signal '(0 0)))
 
 (define frame-time (map (lambda (_) (get-time)) new-frame))
 (define num-frames (fold + 0 (map (constantly 1) new-frame)))
