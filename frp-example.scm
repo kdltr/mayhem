@@ -6,24 +6,14 @@
 ;; (trace gochan-send gochan-receive)
 
 (define new-frame
-  (make-primitive-signal
-   (lambda (state message)
-     (if (equal? message 'new-frame)
-         '(change new-frame)
-         '(no-change new-frame)))))
+  (make-primitive-signal 'new-frame))
 
 (define cursor-position
-  (make-primitive-signal
-   (lambda (state message)
-     (match message
-       (('cursor-position x y)
-        (list 'change (list x y)))
-       (else
-        (list 'no-change state))))))
+  (make-primitive-signal '(0 0)))
 
 ;; (define clock (signal-map get-time new-frame))
 ;; or something like that
-(define clock
+(define frame-time
   (make-registered-signal
    (list new-frame)
    (lambda (state new-frame)
@@ -31,13 +21,16 @@
 
 (define scene
   (make-registered-signal
-   (list clock cursor-position)
+   (list frame-time cursor-position)
    (lambda (state clock cursor-position)
      ;; represent scene as a thunk for now
      (lambda ()
-       (print cursor-position)
        (gl:Clear gl:COLOR_BUFFER_BIT)
        (gl:LoadIdentity)
+       (let ((x (car cursor-position))
+             (y (cadr cursor-position
+                      )))
+         (gl:Translatef (sub1 (/ x 300)) (- (sub1 (/ y 200))) 0))
        (gl:Rotatef (* 100 clock) 0 0 1)
        (gl:Begin gl:QUADS)
        (gl:Vertex2f -0.2 0.2)
@@ -52,7 +45,7 @@
 
 (cursor-position-callback
  (lambda (window x y)
-   (broadcast-message! (list 'cursor-position x y))))
+   (notify-primitive-signal! cursor-position (list x y))))
 
 (with-window (600 400 "GLFW3 Test" resizable: #f)
   (start-signal-graph! scene)
@@ -62,11 +55,13 @@
     (wait-vblank)
     ;; (swap-buffers (window))
     (poll-events)
-    (broadcast-message! 'new-frame)
+    (notify-primitive-signal! new-frame 'new-frame)
     (thread-yield!)
-    (let loop2 ((msg (gochan-receive scene-receiver)))
-      (if (eq? (car msg) 'change)
-          (cadr msg)
-          (loop2 (gochan-receive scene-receiver))))
+    (let loop2 ((msg (gochan-receive* scene-receiver 0))
+                (last void))
+      (if (eq? msg #t)
+          (last)
+          (loop2 (gochan-receive* scene-receiver 0)
+                 (cadar msg))))
     (unless (window-should-close (window))
       (loop))))
