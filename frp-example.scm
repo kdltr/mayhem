@@ -38,23 +38,29 @@
    square-angle square-translation color))
 
 
+(define tick-receiver (gochan))
+(primitive-emitters-set!
+ new-frame
+ (cons tick-receiver
+       (primitive-emitters new-frame)))
+
 (define scene-receiver (gochan))
 (emitters-set! scene (list scene-receiver))
 
-(with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 1)
+(with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 0)
   (start-signal-graph! scene)
   (let loop ()
-    (nonblocking-swap-buffers)
-    (gc #f)
-    (wait-vblank)
+    ;; (nonblocking-swap-buffers)
+    ;; (gc #f)
+    ;; (wait-vblank)
+    (swap-buffers (window))
     (poll-events)
     (notify-primitive-signal! new-frame 'new-frame)
-    (thread-yield!)
-    (let loop2 ((msg (gochan-receive* scene-receiver 0))
-                (last void))
-      (if (eq? msg #t)
-          (last)
-          (loop2 (gochan-receive* scene-receiver 0)
-                 (cadar msg))))
+    (let loop2 ()
+      (let* ((tick-msg (gochan-receive tick-receiver))
+             (scene-msg (gochan-receive scene-receiver)))
+        (if (equal? '(change new-frame) tick-msg)
+            ((cadr scene-msg)) ;; it's time to render
+            (loop2))))
     (unless (window-should-close (window))
       (loop))))
