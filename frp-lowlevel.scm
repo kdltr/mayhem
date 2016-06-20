@@ -2,12 +2,12 @@
     *
 
   (import scheme chicken)
-  (use gochan srfi-18 srfi-1)
+  (use mailbox srfi-18 srfi-1)
 
   ;; Helpers
 
-  (define (gochan-broadcast chans msg)
-    (for-each (cut gochan-send <> msg) chans))
+  (define (broadcast! chans msg)
+    (for-each (cut mailbox-send! <> msg) chans))
 
   (define (change-message? o)
     (and (pair? o) (eq? 'change (car o))))
@@ -32,6 +32,6 @@
            (thread (accessor signal)))
       (case (thread-state thread)
         ((created) (thread-start! thread))
-        ((ready running blocked sleeping) (void)) ;; thread already started
-        (else  (error "thread in strange state" signal thread))))
+        ((ready running blocked sleeping suspended) (void)) ;; thread already started
+        (else  (error "thread in strange state" signal thread (thread-state thread)))))
     (for-each start-signal-graph! (if (signal? signal) (parents signal) '()))))

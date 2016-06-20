@@ -13,11 +13,11 @@
 (define (primitive-signal-loop signal)
   (lambda ()
     (let loop ((state (default-value signal)))
-      (let* ((message (gochan-receive (primitive-receptor signal)))
+      (let* ((message (mailbox-receive! (primitive-receptor signal)))
              (is-target? (eq? (car message) (identifier signal)))
              (new-state (if is-target? (cadr message) state))
              (out-msg (list (if is-target? 'change 'no-change) new-state)))
-        (gochan-broadcast (primitive-emitters signal) out-msg)
+        (broadcast! (primitive-emitters signal) out-msg)
         (loop new-state)))))
 
 (define (make-primitive-signal default-value)
@@ -29,4 +29,4 @@
     signal))
 
 (define (notify-primitive-signal! signal msg)
-  (gochan-send dispatcher-channel (list (identifier signal) msg)))
+  (mailbox-send! dispatcher-channel (list (identifier signal) msg)))

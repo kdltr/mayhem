@@ -1,5 +1,5 @@
 (import scheme chicken data-structures srfi-18)
-(use glfw3 gl nonblocking-swap-buffers matchable frp-lowlevel gochan frp)
+(use glfw3 gl nonblocking-swap-buffers matchable frp-lowlevel mailbox frp)
 
 (load "frp-glfw")
 (import frp-glfw)
@@ -38,13 +38,13 @@
    square-angle square-translation color))
 
 
-(define tick-receiver (gochan))
+(define tick-receiver (make-mailbox))
 (primitive-emitters-set!
  new-frame
  (cons tick-receiver
        (primitive-emitters new-frame)))
 
-(define scene-receiver (gochan))
+(define scene-receiver (make-mailbox))
 (emitters-set! scene (list scene-receiver))
 
 (with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 0)
@@ -57,8 +57,8 @@
     (poll-events)
     (notify-primitive-signal! new-frame 'new-frame)
     (let loop2 ()
-      (let* ((tick-msg (gochan-receive tick-receiver))
-             (scene-msg (gochan-receive scene-receiver)))
+      (let* ((tick-msg (mailbox-receive! tick-receiver))
+             (scene-msg (mailbox-receive! scene-receiver)))
         (if (equal? '(change new-frame) tick-msg)
             ((cadr scene-msg)) ;; it's time to render
             (loop2))))

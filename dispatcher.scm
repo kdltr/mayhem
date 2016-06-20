@@ -2,19 +2,19 @@
   '())
 
 (define dispatcher-channel
-  (gochan))
+  (make-mailbox))
 
 (define dispatcher
   (make-thread
    (lambda ()
      (let loop ()
-       (let ((msg (gochan-receive dispatcher-channel)))
-         (gochan-broadcast inputs-pool msg))
+       (let ((msg (mailbox-receive! dispatcher-channel)))
+         (broadcast! inputs-pool msg))
        (loop)))))
 
 (thread-start! dispatcher)
 
 (define (register-primitive-signal! signal)
-  (let ((channel (gochan)))
+  (let ((channel (make-mailbox)))
     (set! inputs-pool (cons channel inputs-pool))
     (primitive-receptor-set! signal channel)))
