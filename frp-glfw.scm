@@ -11,10 +11,12 @@
      scroll
      key
      char
-     monitor)
+     monitor
+     new-frame
+     run-scene)
 
   (import scheme chicken)
-  (use glfw3 nonblocking-swap-buffers frp-lowlevel)
+  (use glfw3 frp-lowlevel mailbox)
 
   (define window-position (make-primitive-signal '(0 0)))
   (window-position-callback
@@ -68,11 +70,41 @@
   (monitor-callback
    (lambda (m e) (notify-primitive-signal! monitor (list m e))))
 
+  (define new-frame (make-primitive-signal #t))
+
   (for-each
    start-signal-graph!
    (list window-position window-size window-close window-focus window-iconify
          framebuffer-size mouse-button cursor-enter cursor-position scroll key
-         char monitor))
+         char monitor new-frame))
+
+  (define (run-scene scene)
+    (define tick-receiver (make-mailbox))
+    (primitive-emitters-set!
+     new-frame
+     (cons tick-receiver
+           (primitive-emitters new-frame)))
+
+    (define scene-receiver (make-mailbox))
+    (emitters-set! scene (list scene-receiver))
+
+    (with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 0)
+      (start-signal-graph! scene)
+      (let loop ()
+        ;; (nonblocking-swap-buffers)
+        ;; (gc #f)
+        ;; (wait-vblank)
+        (swap-buffers (window))
+        (poll-events)
+        (notify-primitive-signal! new-frame #t)
+        (let loop2 ()
+          (let* ((tick-msg (mailbox-receive! tick-receiver))
+                 (scene-msg (mailbox-receive! scene-receiver)))
+            (if (equal? '(change #t) tick-msg)
+                ((cadr scene-msg)) ;; it's time to render
+                (loop2))))
+        (unless (window-should-close (window))
+          (loop)))))
 
   )
 

@@ -1,10 +1,8 @@
 (import scheme chicken data-structures srfi-18)
-(use glfw3 gl nonblocking-swap-buffers matchable frp-lowlevel mailbox frp)
+(use glfw3 gl frp)
 
 (load "frp-glfw")
 (import frp-glfw)
-
-(define new-frame (make-primitive-signal 'new-frame))
 
 (define frame-time (map (lambda (_) (get-time)) new-frame))
 (define num-frames (fold + 0 (map (constantly 1) new-frame)))
@@ -37,30 +35,4 @@
        (gl:End)))
    square-angle square-translation color))
 
-
-(define tick-receiver (make-mailbox))
-(primitive-emitters-set!
- new-frame
- (cons tick-receiver
-       (primitive-emitters new-frame)))
-
-(define scene-receiver (make-mailbox))
-(emitters-set! scene (list scene-receiver))
-
-(with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 0)
-  (start-signal-graph! scene)
-  (let loop ()
-    ;; (nonblocking-swap-buffers)
-    ;; (gc #f)
-    ;; (wait-vblank)
-    (swap-buffers (window))
-    (poll-events)
-    (notify-primitive-signal! new-frame 'new-frame)
-    (let loop2 ()
-      (let* ((tick-msg (mailbox-receive! tick-receiver))
-             (scene-msg (mailbox-receive! scene-receiver)))
-        (if (equal? '(change new-frame) tick-msg)
-            ((cadr scene-msg)) ;; it's time to render
-            (loop2))))
-    (unless (window-should-close (window))
-      (loop))))
+(run-scene scene)
