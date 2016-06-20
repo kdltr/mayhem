@@ -68,5 +68,11 @@
   (monitor-callback
    (lambda (m e) (notify-primitive-signal! monitor (list m e))))
 
+  (for-each
+   start-signal-graph!
+   (list window-position window-size window-close window-focus window-iconify
+         framebuffer-size mouse-button cursor-enter cursor-position scroll key
+         char monitor))
+
   )
 
