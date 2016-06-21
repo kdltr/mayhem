@@ -5,7 +5,7 @@
 (import frp-glfw)
 
 (define frame-time (map (lambda (_) (get-time)) new-frame))
-(define num-frames (fold + 0 (map (constantly 1) new-frame)))
+(define num-frames (map (lambda (t) (inexact->exact (floor (* 60 t)))) frame-time))
 
 (define square-angle (map (lambda (time) (* 100 time)) frame-time))
 (define square-translation
