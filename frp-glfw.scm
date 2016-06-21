@@ -16,7 +16,7 @@
      run-scene)
 
   (import scheme chicken)
-  (use glfw3 frp-lowlevel mailbox)
+  (use glfw3 nonblocking-swap-buffers frp-lowlevel mailbox)
 
   (define window-position (make-primitive-signal '(0 0)))
   (window-position-callback
@@ -88,13 +88,13 @@
     (define scene-receiver (make-mailbox))
     (emitters-set! scene (list scene-receiver))
 
-    (with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 0)
+    (with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 1)
       (start-signal-graph! scene)
       (let loop ()
-        ;; (nonblocking-swap-buffers)
-        ;; (gc #f)
-        ;; (wait-vblank)
-        (swap-buffers (window))
+        (nonblocking-swap-buffers)
+        (gc #f)
+        (poll-events)
+        (wait-vblank)
         (poll-events)
         (notify-primitive-signal! new-frame #t)
         (let loop2 ()
