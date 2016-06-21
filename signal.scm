@@ -22,10 +22,9 @@
         (broadcast! (emitters sig) out-msg)
         (loop new-state)))))
 
-(define no-default (list 'no-default))
-(define (make-registered-signal parents function #!optional (default no-default))
+(define (make-registered-signal parents function #!optional (default (void)))
   (let* ((parents-defaults (map (lambda (s) (or (default-value s) (initial-value s))) parents))
-         (init (if (eq? default no-default) (apply function #f parents-defaults) default))
+         (init (if (eq? default (void)) (apply function #f parents-defaults) default))
          (channels (map (lambda (_) (make-mailbox)) parents))
          (sig (%make-signal channels '() parents function #f init))
          (signal-thunk (signal-loop sig)))
