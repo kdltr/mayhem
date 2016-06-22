@@ -1,0 +1,11 @@
+Important:
+- [DONE] Better FRP library, maybe reuse and contribute to the channel egg
+- [DONE] Side collisions on walls
+- Actually die
+- Use a declarative DSL for vector graphics (fps egg with cairo backend, which
+  needs to be done)
+- Wall pattern declarative DSL
+- Menu!
+
+Extra:
+- Invert mode
