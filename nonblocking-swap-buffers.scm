@@ -1,6 +1,7 @@
 (module nonblocking-swap-buffers
     (nonblocking-swap-buffers
-     wait-vblank)
+     wait-vblank
+     grab-context!)
 
   (import scheme chicken foreign)
   (use srfi-18 glfw3 posix)
@@ -45,7 +46,7 @@ EOF
     "window = (GLFWwindow*) w;"))
 
 (define nonblocking-swap-buffers)
-(define wait-vblank)
+(define grab-context!)
 (let ((ctx #f))
   (set! nonblocking-swap-buffers
     (lambda ()
@@ -54,12 +55,14 @@ EOF
       (make-context-current #f)
       (write-char #\null a2b-write-port)
       (flush-output a2b-write-port)))
-  (set! wait-vblank
+  (set! grab-context!
     (lambda ()
-      (thread-wait-for-i/o! b2a-read #:input)
-      (read-char b2a-read-port)
       (make-context-current ctx)
       (set! ctx #f))))
+
+(define (wait-vblank)
+  (thread-wait-for-i/o! b2a-read #:input)
+  (read-char b2a-read-port))
 
 (define-values (a2b-read a2b-write) (create-pipe))
 (define-values (b2a-read b2a-write) (create-pipe))

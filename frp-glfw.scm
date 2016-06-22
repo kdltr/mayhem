@@ -16,7 +16,7 @@
      run-scene)
 
   (import scheme chicken)
-  (use glfw3 nonblocking-swap-buffers frp-lowlevel mailbox)
+  (use glfw3 srfi-18 nonblocking-swap-buffers frp-lowlevel mailbox)
 
   (define window-position (make-primitive-signal '(0 0)))
   (window-position-callback
@@ -79,6 +79,15 @@
          char monitor new-frame))
 
   (define (run-scene scene)
+    (define dt 0)
+    (define frame-ticker
+      (make-thread
+       (lambda ()
+         (let loop ()
+           (wait-vblank)
+           (thread-sleep! (- 0.016 dt))
+           (notify-primitive-signal! new-frame #t)
+           (loop)))))
     (define tick-receiver (make-mailbox))
     (primitive-emitters-set!
      new-frame
@@ -90,21 +99,24 @@
 
     (with-window (600 400 "GLFW3 Test" resizable: #f swap-interval: 1)
       (start-signal-graph! scene)
+      (thread-start! frame-ticker)
       (let loop ()
         (nonblocking-swap-buffers)
         (gc #f)
         (poll-events)
-        (wait-vblank)
-        (poll-events)
-        (notify-primitive-signal! new-frame #t)
+        ;; (notify-primitive-signal! new-frame #t)
         (let loop2 ()
-          (let* ((tick-msg (mailbox-receive! tick-receiver))
-                 (scene-msg (mailbox-receive! scene-receiver)))
+          (let* ((tick-msg (mailbox-receive! tick-receiver 0 #f))
+                 (scene-msg (if tick-msg (mailbox-receive! scene-receiver) #f)))
             (if (equal? '(change #t) tick-msg)
-                ((cadr scene-msg)) ;; it's time to render
-                (loop2))))
-        (unless (window-should-close (window))
-          (loop)))))
+                (begin (grab-context!)
+                       (let ((time-before (get-time)))
+                         ((cadr scene-msg)) ;; it's time to render
+                         (set! dt (- (get-time) time-before)))
+                       (unless (window-should-close (window))
+                         (loop)))
+                (begin (poll-events)
+                       (loop2))))))))
 
   )
 
