@@ -1,8 +1,5 @@
 (import scheme chicken data-structures srfi-18)
-(use glfw3 gl frp)
-
-(load "frp-glfw")
-(import frp-glfw)
+(use glfw3 gl frp frp-glfw)
 
 (define frame-time (map (lambda (_) (get-time)) new-frame))
 (define num-frames (map (lambda (t) (inexact->exact (floor (* 60 t)))) frame-time))
