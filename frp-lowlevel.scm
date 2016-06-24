@@ -9,8 +9,17 @@
   (define (broadcast! chans msg)
     (for-each (cut mailbox-send! <> msg) chans))
 
-  (define (change-message? o)
+  (define (change? o)
     (and (pair? o) (eq? 'change (car o))))
+
+  (define (change o) (list 'change o))
+  (define (no-change o) (list 'no-change o))
+  (define (body-of m) (cadr m))
+
+  (define (initial-value o)
+    (cond ((primitive-signal? o) (primitive-initial-value o))
+          ((signal? o) (signal-initial-value o))
+          (else (error "Trying to take the initial-value of a non-signal object" o))))
 
   (define (register-emitter! signal channel)
     (let ((getter (cond ((primitive-signal? signal) primitive-emitters)

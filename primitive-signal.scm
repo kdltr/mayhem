@@ -1,18 +1,15 @@
 (define-record-type primitive-signal
-  (%make-primitive-signal receptor emitters default-value identifier thread)
+  (%make-primitive-signal receptor emitters initial-value identifier thread)
   primitive-signal?
   (receptor primitive-receptor primitive-receptor-set!)
   (emitters primitive-emitters primitive-emitters-set!)
-  (default-value %default-value)
+  (initial-value primitive-initial-value)
   (identifier identifier identifier-set!)
   (thread primitive-thread primitive-thread-set!))
 
-(define (default-value o)
-  (and (primitive-signal? o) (%default-value o)))
-
 (define (primitive-signal-loop signal)
   (lambda ()
-    (let loop ((state (default-value signal)))
+    (let loop ((state (primitive-initial-value signal)))
       (let* ((message (mailbox-receive! (primitive-receptor signal)))
              (is-target? (eq? (car message) (identifier signal)))
              (new-state (if is-target? (cadr message) state))
@@ -20,9 +17,9 @@
         (broadcast! (primitive-emitters signal) out-msg)
         (loop new-state)))))
 
-(define (make-primitive-signal default-value)
+(define (make-primitive-signal initial-value)
   (let* ((identifier (gensym 'primitive-signal))
-         (signal (%make-primitive-signal #f '() default-value identifier #f))
+         (signal (%make-primitive-signal #f '() initial-value identifier #f))
          (thread-thunk (primitive-signal-loop signal)))
     (register-primitive-signal! signal)
     (primitive-thread-set! signal (make-thread thread-thunk))
