@@ -1,6 +1,6 @@
 (import scheme chicken data-structures srfi-18)
 (use glfw3 gl (prefix frp frp:) frp-lowlevel frp-glfw mailbox
-     nanovg-gl2 matchable)
+     nanovg-gl2 matchable vector-lib defstruct)
 
 (init)
 (make-window 640 480 "Drag&drop" resizable: #f swap-interval: 0)
@@ -17,8 +17,12 @@
    mouse-button))
 
 (define pos+click
-  (frp:map list cursor-position left-click))
+  (frp:merge
+   (frp:map (cut list 'cursor-position <>) cursor-position)
+   (frp:map (cut list 'left-click <> <>) left-click cursor-position)))
 
+
+(defstruct gamestate squares grabbed-id grab-offset)
 
 (define (in-rect? px py rx ry rw rh)
   (and (< rx px (+ rx rw))
@@ -26,27 +30,41 @@
 
 (define state
   (frp:fold
-   (lambda (states pos+click)
-     (let ((cursor-pos (car pos+click))
-           (click (cadr pos+click)))
-       (let loop ((states states))
-         (if (null? states)
-             '()
-             (cons
-              (let ((state (car states)))
-                (if (and click (apply in-rect? (append cursor-pos (take state 4))))
-                    (append (map (cut - <> 25) cursor-pos)
-                            (drop state 2))
-                    state))
-              (loop (cdr states)))))))
-   '((30 30 50 50 1 0.5 0.35)
-     (148 298 50 50 0.35 1 0.5))
+   (lambda (state m)
+     (match m
+       (('cursor-position (x y))
+        (if (gamestate-grabbed-id state)
+            (update-gamestate
+             state
+             squares: (vector-map (lambda (i sq)
+                                    (if (= i (gamestate-grabbed-id state))
+                                        (let ((offset (gamestate-grab-offset state)))
+                                          (cons* (- x (car offset)) (- y (cadr offset)) (drop sq 2)))
+                                        sq))
+                                  (gamestate-squares state)))
+            state))
+       (('left-click #t (x y))
+        (let* ((under-mouse-id
+                (vector-index
+                 (lambda (sq)
+                   (in-rect? x y (car sq) (cadr sq) 50 50))
+                 (gamestate-squares state)))
+               (under-mouse (and under-mouse-id (vector-ref (gamestate-squares state) under-mouse-id))) )
+          (update-gamestate state
+                            grabbed-id: under-mouse-id
+                            grab-offset: (and under-mouse (list (- x (car under-mouse)) (- y (cadr under-mouse)))))))
+       (('left-click #f (_ _))
+        (update-gamestate state grabbed-id: #f))))
+   (make-gamestate
+    squares: (vector '(30 30 1 0.5 0.35) '(148 298 0.35 1 0.5))
+    grabbed-id: #f
+    grab-offset: '(0 0))
    pos+click))
 
 
 (define scene
   (frp:map
-   (lambda (frame wsize fbsize states)
+   (lambda (frame wsize fbsize state)
      ;; represent scene as a thunk for now
      (lambda ()
        (gl:Clear (+ gl:COLOR_BUFFER_BIT
@@ -58,13 +76,13 @@
               (ratio (if (zero? width) 1 (/ fbwidth width))))
          (gl:Viewport 0 0 width height)
          (begin-frame! *c* width height ratio))
-       (for-each
-        (lambda (state)
+       (vector-for-each
+        (lambda (i square)
           (begin-path! *c*)
-          (apply rectangle! *c* (take state 4))
-          (fill-color! *c* (apply make-color-rgbf (drop state 4)))
+          (apply (cut rectangle! <> <> <> 50 50) *c* (take square 2))
+          (fill-color! *c* (apply make-color-rgbf (drop square 2)))
           (fill! *c*))
-        states)
+        (gamestate-squares state))
        (end-frame! *c*)))
    new-frame window-size framebuffer-size state))
 
