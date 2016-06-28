@@ -37,7 +37,8 @@
   last-update
   board-angle
   player-speed
-  player-angle)
+  player-angle
+  walls)
 (define-type gamestate gamestate?)
 
 
@@ -45,13 +46,13 @@
 (define-type clock-tick clock-tick?)
 (define clock (frp:map (lambda (_) (make-clock-tick (get-time))) new-frame))
 (define-generic (update (gamestate state) (clock-tick tick))
-  (update-gamestate state
-                    player-angle: (+ (gamestate-player-angle state)
-                                     (* (- (clock-tick-time tick)
-                                           (gamestate-last-update state))
-                                        (gamestate-player-speed state)))
-                    board-angle: (clock-tick-time tick)
-                    last-update: (clock-tick-time tick)))
+  (let ((dt (- (clock-tick-time tick) (gamestate-last-update state))))
+    (update-gamestate state
+                      player-angle: (+ (gamestate-player-angle state)
+                                       (* dt (gamestate-player-speed state)))
+                      board-angle: (clock-tick-time tick)
+                      last-update: (clock-tick-time tick)
+                      walls: (update-walls dt (gamestate-walls state)))))
 
 
 (define-record movement-key direction press)
@@ -78,13 +79,15 @@
                                           (or (and (eq? direction 'left) (or (and press -1) +1))
                                               (and (eq? direction 'right) (or (and press +1) -1))))))))
 
+
 (define state
   (frp:fold
    update
    (make-gamestate last-update: (get-time)
                    board-angle: 0
                    player-speed: 0
-                   player-angle: 0)
+                   player-angle: 0
+                   walls: '())
    (frp:merge
     clock
     movement-keys)))
@@ -96,15 +99,15 @@
   (let ((last 0))
     (lambda (dt)
       (if (>= (+ last dt) 500)
-        (begin
-          (set! last 0)
-          (map
-            (lambda (i)
-              (make-wall (random 6) 20))
-            (iota (random 5))))
-        (begin
-          (set! last (+ last dt))
-          '())))))
+          (begin
+            (set! last 0)
+            (map
+             (lambda (i)
+               (make-wall (random 6) 20))
+             (iota (random 5))))
+          (begin
+            (set! last (+ last dt))
+            '())))))
 
 (define (update-wall dt wall)
   (list (car wall)
@@ -112,18 +115,11 @@
         (caddr wall)))
 
 (define (update-walls dt walls)
-  (map (cut update-wall dt <>) walls))
-
-(define walls
-  (fold-channel
-   (lambda (dt walls)
-     (append (make-walls dt)
-             (remove
-              (lambda (w)
-                (<= (+ (cadr w) (caddr w)) 0))
-              (update-walls dt walls))))
-   '()
-   clock))
+  (append (make-walls (* 1000 dt))
+          (remove
+           (lambda (w)
+             (<= (+ (cadr w) (caddr w)) 0))
+           (map (cut update-wall (* 1000 dt) <>) walls))))
 
 (define fps
   (map-channel

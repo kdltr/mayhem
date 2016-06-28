@@ -26,6 +26,7 @@
 (define hexagon-stroke-color (nvg:make-color-rgbf 0 0 1))
 (define background-color-1 (nvg:make-color-rgbf 0.4 0.4 0.6))
 (define background-color-2 (nvg:make-color-rgbf 0.1 0.1 0.3))
+(define wall-color (nvg:make-color-rgbf 1 1 0))
 
 
 ;; Game
@@ -134,10 +135,10 @@
     (draw-background background-color-1 background-color-2)
 
     ;; walls
-    ;; (for-each
-    ;;  (lambda (w)
-    ;;    (apply (cut draw-wall <> <> <> '(1 1 0)) w))
-    ;;  (channel-value walls))
+    (for-each
+     (lambda (w)
+       (apply (cut draw-wall <> <> <> wall-color) w))
+     (gamestate-walls state))
 
     ;; player
     (draw-hexagon hexagon-fill-color hexagon-stroke-color)
