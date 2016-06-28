@@ -18,6 +18,16 @@
   (cut apply nvg:move-to! *c* <>))
 
 
+;; Colors
+
+(define white (nvg:make-color-rgbf 1 1 1))
+(define player-color (nvg:make-color-rgbf 0.6 0.6 1))
+(define hexagon-fill-color (nvg:make-color-rgbf 0.1 0.1 0.3))
+(define hexagon-stroke-color (nvg:make-color-rgbf 0 0 1))
+(define background-color-1 (nvg:make-color-rgbf 0.4 0.4 0.6))
+(define background-color-2 (nvg:make-color-rgbf 0.1 0.1 0.3))
+
+
 ;; Game
 
 (define normal-coordinates
@@ -48,7 +58,7 @@
   (nvg:move-to! *c* 0 0)
   (for-each line-to (map (cut vmul d <>) (vector-ref zones-coordinates n)))
   (nvg:close-path! *c*)
-  (nvg:fill-color! *c* (apply nvg:make-color-rgbf color))
+  (nvg:fill-color! *c* color)
   (nvg:fill! *c*))
 
 (define (draw-hexagon fill stroke)
@@ -56,8 +66,8 @@
   (apply nvg:move-to! *c* (car hexagon-coordinates))
   (for-each line-to (cdr hexagon-coordinates))
   (nvg:close-path! *c*)
-  (nvg:fill-color! *c* (apply nvg:make-color-rgbf fill))
-  (nvg:stroke-color! *c* (apply nvg:make-color-rgbf stroke))
+  (nvg:fill-color! *c* fill)
+  (nvg:stroke-color! *c* stroke)
   (nvg:stroke-width! *c* 3)
   (nvg:fill! *c*)
   (nvg:stroke! *c*))
@@ -71,7 +81,7 @@
   (nvg:line-to! *c* 5 0)
   (nvg:line-to! *c* 0 -10)
   (nvg:close-path! *c*)
-  (nvg:fill-color! *c* (nvg:make-color-rgbf 0.6 0.6 1))
+  (nvg:fill-color! *c* player-color)
   (nvg:fill! *c*))
 
 (define (draw-wall zone position width color)
@@ -82,7 +92,7 @@
     (line-to (vmul (+ position width) (cadr units)))
     (line-to (vmul position (cadr units)))
     (nvg:close-path! *c*)
-    (nvg:fill-color! *c* (apply nvg:make-color-rgbf color))
+    (nvg:fill-color! *c* color)
     (nvg:fill! *c*)))
 
 (define (draw-background c1 c2)
@@ -98,7 +108,7 @@
   (nvg:begin-path! *c*)
   (nvg:font-size! *c* 12)
   (nvg:font-face! *c* "DejaVu")
-  (nvg:fill-color! *c* (nvg:make-color-rgbf 1 1 1))
+  (nvg:fill-color! *c* white)
   ;; fps
   (nvg:text! *c* 10 10 (sprintf "~A fps" (channel-value fps)))
   ;; time elapsed
@@ -119,9 +129,9 @@
     (nvg:translate! *c* cx cy)
     ;; fancy effects
     (nvg:scale! *c* 1 0.8)
-    (nvg:rotate! *c* (game-state-angle state))
+    (nvg:rotate! *c* (gamestate-board-angle state))
 
-    (draw-background '(0.4 0.4 0.6) '(0.1 0.1 0.3))
+    (draw-background background-color-1 background-color-2)
 
     ;; walls
     ;; (for-each
@@ -130,8 +140,8 @@
     ;;  (channel-value walls))
 
     ;; player
-    (draw-hexagon '(0.1 0.1 0.3) '(0 0 1))
-    (draw-player (game-state-position state))
+    (draw-hexagon hexagon-fill-color hexagon-stroke-color)
+    (draw-player (gamestate-player-angle state))
 
     (nvg:restore-state! *c*)
 
