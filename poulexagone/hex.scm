@@ -17,18 +17,8 @@
 (define *c* (nvg:create-context))
 (nvg:create-font! *c* "DejaVu" "/home/kooda/.guix-profile/share/fonts/truetype/DejaVuSansMono.ttf")
 
-
 (include "poulexagone/logic")
 (include "poulexagone/draw")
-
-(define-record game-state angle position)
-
-(define state
-  (frp:map
-   (lambda (t dt)
-     (print dt)
-     (make-game-state (* 2 t) (- (/ t 10))))
-   time dt))
 
 (define scene (frp:map draw-all state))
 

@@ -27,31 +27,67 @@
 (define (next-zone z)
   (modulo (add1 z) 6))
 
-; Game logic
+
+;; Game logic
 
 (define player-speed (* pi 1))
 (define walls-speed 1/4)
 
-; Reuse this with a better frp system
-; (define (make-wall zone width)
-;   (fold-channel
-;     clock
-;     (lambda (dt wall)
-;       (list (car wall)
-;             (max 0 (- (cadr wall) (* dt walls-speed)))
-;             (caddr wall)))
-;     (list zone 600 width)))
-;
-; (define walls-clock
-;   (filter-channel
-;     (fold-channel
-;       clock
-;       (lambda (dt prev)
-;         (if (> (+ dt prev) 500)
-;           0
-;           (+ dt prev)))
-;       0)
-;     zero?))
+(defstruct gamestate
+  last-update
+  board-angle
+  player-speed
+  player-angle)
+(define-type gamestate gamestate?)
+
+
+(define-record clock-tick time)
+(define-type clock-tick clock-tick?)
+(define clock (frp:map (lambda (_) (make-clock-tick (get-time))) new-frame))
+(define-generic (update (gamestate state) (clock-tick tick))
+  (update-gamestate state
+                    player-angle: (+ (gamestate-player-angle state)
+                                     (* (- (clock-tick-time tick)
+                                           (gamestate-last-update state))
+                                        (gamestate-player-speed state)))
+                    board-angle: (clock-tick-time tick)
+                    last-update: (clock-tick-time tick)))
+
+
+(define-record movement-key direction press)
+(define-type movement-key movement-key?)
+(define movement-keys
+  (frp:map
+   (lambda (k)
+     (let ((key (cadr k))
+           (action (caddr k)))
+       (make-movement-key (case key ((38) 'left) ((40) 'right))
+                          (case action ((0) #f) ((1) #t)))))
+   (frp:filter (lambda (k)
+                 (and (pair? k)
+                      (not (= (caddr k) 2))
+                      (or (= (cadr k) 38) (= (cadr k) 40))))
+               '(0 38 0 0) key)))
+(define-generic (update (gamestate state) (movement-key key))
+  (let ((speed (gamestate-player-speed state))
+        (direction (movement-key-direction key))
+        (press (movement-key-press key)))
+    (update-gamestate state
+                      player-speed: (+ speed
+                                       (* player-speed
+                                          (or (and (eq? direction 'left) (or (and press -1) +1))
+                                              (and (eq? direction 'right) (or (and press +1) -1))))))))
+
+(define state
+  (frp:fold
+   update
+   (make-gamestate last-update: (get-time)
+                   board-angle: 0
+                   player-speed: 0
+                   player-angle: 0)
+   (frp:merge
+    clock
+    movement-keys)))
 
 (define (make-wall zone width)
   (list zone 600 width))
@@ -96,7 +132,7 @@
                   (* (/ 1 c) 1000)))
     clock))
 
-(define hex-angle (frp:map (lambda (t) (* t (/ pi 2))) time))
+;; (define hex-angle (frp:map (lambda (t) (* t (/ pi 2))) time))
 
 
 (define movements
