@@ -3,7 +3,7 @@
      nanovg-gl2 matchable vector-lib defstruct)
 
 (init)
-(make-window 640 480 "Drag&drop" resizable: #f swap-interval: 0)
+(make-window 640 480 "Drag&drop" resizable: #f swap-interval: 1)
 (define *c* (create-context))
 
 (define left-click
@@ -86,31 +86,4 @@
        (end-frame! *c*)))
    new-frame window-size framebuffer-size state))
 
-
-(define tick-receiver (make-mailbox))
-(primitive-emitters-set!
- new-frame
- (cons tick-receiver (primitive-emitters new-frame)))
-(define scene-receiver (make-mailbox))
-(emitters-set! scene (list scene-receiver))
-
-(dynamic-wind
-    (lambda () (start-signal-graph! scene))
-    (lambda ()
-      (let loop ()
-        (swap-buffers (window))
-        (poll-events)
-        (notify-primitive-signal! new-frame #t)
-        (let loop2 ()
-          (let* ((tick-msg (mailbox-receive! tick-receiver))
-                 (scene-msg (if tick-msg (mailbox-receive! scene-receiver))))
-            (if (equal? '(change #t) tick-msg)
-                (begin ((cadr scene-msg)) ;; it's time to render
-                       (unless (window-should-close (window))
-                         (loop)))
-                (begin (poll-events)
-                       (loop2)))))))
-    (lambda ()
-      (set! *c* #f)
-      (destroy-window (window))
-      (gc #t)))
+(run-scene scene)
