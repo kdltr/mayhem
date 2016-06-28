@@ -1,14 +1,15 @@
 (use frp frp-glfw)
 
-(define movement (map (lambda m (list 'movement m)) cursor-position))
-(define click (map (lambda m (list 'click m)) mouse-button))
+(define movement (map (cut list 'movement <>) cursor-position))
+(define click (map (cut list 'click <>) mouse-button))
 
 (define messages (merge movement click))
 
 (define scene
   (map
    (lambda (m)
-     (lambda () (print m)))
+     (print m)
+     void)
    messages))
 
 (run-scene scene)
