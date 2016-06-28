@@ -1,4 +1,4 @@
-(use frp frp-glfw)
+(use glfw3 frp frp-glfw)
 
 (define movement (map (cut list 'movement <>) cursor-position))
 (define click (map (cut list 'click <>) mouse-button))
@@ -12,4 +12,5 @@
      void)
    messages))
 
-(run-scene scene)
+(with-window (600 400 "Merge signal test" resizable: #f swap-interval: 1)
+  (run-scene scene))

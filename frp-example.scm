@@ -32,4 +32,5 @@
        (gl:End)))
    square-angle square-translation color))
 
-(run-scene scene)
+(with-window (600 400 "FRP example" resizable: #f swap-interval: 1)
+  (run-scene scene))
