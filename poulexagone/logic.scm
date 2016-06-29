@@ -36,9 +36,12 @@
 ;; Per frame update
 
 (define (update-wall dt wall)
-  (list (car wall)
-        (- (cadr wall) (* dt walls-speed))
-        (caddr wall)))
+  (let ((new-pos (- (cadr wall) (* dt walls-speed))))
+   (list (car wall)
+         (if (> new-pos 0) new-pos 0)
+         (if (> new-pos 0)
+             (caddr wall)
+             (+ (caddr wall) new-pos)))))
 
 (define (update-walls dt walls)
   (remove
