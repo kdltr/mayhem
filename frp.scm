@@ -1,10 +1,10 @@
 (module frp
-    (map fold filter merge async)
+    (map fold filter merge every async)
 
   (import (except scheme map)
           (only srfi-1 find any)
           chicken)
-  (use frp-lowlevel)
+  (use frp-lowlevel srfi-18)
 
   (define (map function . signals)
     (make-registered-signal
@@ -42,6 +42,16 @@
              changed-input
              (no-change last))))
      (initial-value signal)))
+
+  (define (every time)
+    (let ((sig (make-primitive-signal #f)))
+      (thread-start!
+       (lambda ()
+         (let loop ()
+           (thread-sleep! time)
+           (notify-primitive-signal! sig #t)
+           (loop))))
+      sig))
 
   (define (async signal)
     (let* ((primitive (make-primitive-signal (initial-value signal)))
