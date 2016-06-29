@@ -105,25 +105,27 @@
 
 ;; Overlay
 
-(define (draw-overlay)
+(define (draw-overlay state)
   (nvg:begin-path! *c*)
   (nvg:font-size! *c* 12)
   (nvg:font-face! *c* "DejaVu")
   (nvg:fill-color! *c* white)
   ;; fps
-  (nvg:text! *c* 10 10 (sprintf "~A fps" (channel-value fps)))
+  ;; (nvg:text! *c* 10 10 (sprintf "~A fps" (channel-value fps)))
   ;; time elapsed
-  (nvg:text! *c* 10 30 (sprintf "~A" (/ (channel-value time) 1000)))
+  (nvg:text! *c* 10 30 (sprintf "~A" (gamestate-last-update state)))
   ;; player angle
   (nvg:text! *c* 10 50
-        (sprintf "~A°" (channel-value player-position)))
+        (sprintf "~A°" (gamestate-player-angle state)))
   (nvg:text! *c* 10 70
-        (sprintf "Zone ~A" (angle->zone (channel-value player-position))))
-  (when (not (null? (channel-value death-collision)))
-    (nvg:text! *c* 10 90 "Collision")))
+        (sprintf "Zone ~A" (angle->zone (gamestate-player-angle state))))
+  ;; (when (not (null? (channel-value death-collision)))
+  ;;   (nvg:text! *c* 10 90 "Collision"))
+  )
 
 (define (draw-all state)
   (lambda ()
+    (gl:Clear (+ gl:COLOR_BUFFER_BIT gl:STENCIL_BUFFER_BIT))
     (nvg:begin-frame! *c* width height (/ fbwidth width))
     (nvg:save-state! *c*)
 
@@ -147,6 +149,6 @@
     (nvg:restore-state! *c*)
 
     ;; overlay
-    ;; (draw-overlay)
+    (draw-overlay state)
     (nvg:end-frame! *c*)
     ))
