@@ -136,7 +136,7 @@
     ;; walls
     (for-each
      (lambda (w)
-       (apply (cut draw-wall <> <> <> wall-color) w))
+       (draw-wall (wall-zone w) (wall-position w) (wall-height w) wall-color))
      (gamestate-walls state))
 
     ;; player

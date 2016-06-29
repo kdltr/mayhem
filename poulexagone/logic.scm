@@ -21,7 +21,7 @@
 
 ;; Game logic
 
-(define player-speed (* pi 2))
+(define player-speed (* pi 2.5))
 (define walls-speed 1/4)
 
 (defstruct gamestate
@@ -35,34 +35,34 @@
 
 ;; Per frame update
 
-(define (update-wall dt wall)
-  (let ((new-pos (- (cadr wall) (* dt walls-speed))))
-   (list (car wall)
-         (if (> new-pos 0) new-pos 0)
-         (if (> new-pos 0)
-             (caddr wall)
-             (+ (caddr wall) new-pos)))))
+(define (update-wall* dt wall)
+  (let ((new-pos (- (wall-position wall) (* dt walls-speed))))
+    (update-wall wall
+                 position: (if (> new-pos 0) new-pos 0)
+                 height: (if (> new-pos 0)
+                             (wall-height wall)
+                             (+ (wall-height wall) new-pos)))))
 
 (define (update-walls dt walls)
   (remove
    (lambda (w)
-     (<= (+ (cadr w) (caddr w)) 0))
-   (map (cut update-wall (* 1000 dt) <>) walls)))
+     (<= (+ (wall-position w) (wall-height w)) 0))
+   (map (cut update-wall* (* 1000 dt) <>) walls)))
 
 (define (side-collisions walls position)
   (let* ((zone (angle->zone position))
          (low-walls (filter (lambda (w)
-                              (and (<= (cadr w) (+ hexagon-radius 15))
-                                   (>= (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
+                              (and (<= (wall-position w) (+ hexagon-radius 15))
+                                   (>= (+ (wall-position w) (wall-height w)) (+ hexagon-radius 15))))
                             walls)))
-    (list (any (lambda (w) (= (car w) (prev-zone zone))) low-walls)
-          (any (lambda (w) (= (car w) (next-zone zone))) low-walls))))
+    (list (any (lambda (w) (= (wall-zone w) (prev-zone zone))) low-walls)
+          (any (lambda (w) (= (wall-zone w) (next-zone zone))) low-walls))))
 
 (define (death-collisions pos walls)
   (filter (lambda (w)
-            (and (= (angle->zone pos) (car w))
-                 (<= (cadr w) (+ hexagon-radius 15))
-                 (>= (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
+            (and (= (angle->zone pos) (wall-zone w))
+                 (<= (wall-position w) (+ hexagon-radius 15))
+                 (>= (+ (wall-position w) (wall-height w)) (+ hexagon-radius 15))))
           walls))
 
 (define (move-player increment walls previous-position)
@@ -85,13 +85,11 @@
                                     new-walls
                                     (gamestate-player-angle state)))
          (death (pair? (death-collisions new-position new-walls))))
-    (if death
-        (exit 0)
-        (update-gamestate state
-                          player-angle: new-position
-                          board-angle: (clock-tick-time tick)
-                          last-update: (clock-tick-time tick)
-                          walls: new-walls))))
+    (update-gamestate state
+                      player-angle: new-position
+                      board-angle: (clock-tick-time tick)
+                      last-update: (clock-tick-time tick)
+                      walls: new-walls)))
 
 
 ;; Movement inputs
@@ -122,8 +120,23 @@
 
 ;; Walls creation
 
-(define (make-wall zone width)
-  (list zone 600 width))
+(defstruct wall zone position height)
+
+(define wall-patterns
+  (map
+   (lambda (p)
+     (map (lambda (w) (apply (cut make-wall zone: <> position: <> height: <>) w)) p))
+   '(((1 600 20)
+      (2 600 20)
+      (3 600 20)
+      (4 600 20)
+      (5 600 20))
+     ((1 600 300)))))
+
+(define (random-rotation walls)
+  (let ((rot (random 6)))
+    (map (lambda (w) (update-wall w zone: (modulo (+ rot (wall-zone w)) 6)))
+         walls)))
 
 (define-record new-walls walls)
 (define-type new-walls new-walls?)
@@ -131,7 +144,7 @@
   (frp:map
    (lambda (_)
      (make-new-walls
-      (list-tabulate 5 (lambda (_) (make-wall (random 6) (+ 20 (random 80)))))))
+      (random-rotation (list-ref wall-patterns (random (length wall-patterns))))))
    (frp:every 0.5)))
 (define-generic (update (gamestate state) (new-walls new))
   (let ((walls (new-walls-walls new)))
