@@ -6,6 +6,7 @@
 (define filter-channel void)
 (define clock (void))
 (define key-events (void))
+(define walls (void))
 (define channel-value void)
 ;;;
 
@@ -42,6 +43,8 @@
 (define-type gamestate gamestate?)
 
 
+;; Per frame update
+
 (define-record clock-tick time)
 (define-type clock-tick clock-tick?)
 (define clock (frp:map (lambda (_) (make-clock-tick (get-time))) new-frame))
@@ -54,6 +57,8 @@
                       last-update: (clock-tick-time tick)
                       walls: (update-walls dt (gamestate-walls state)))))
 
+
+;; Movement inputs
 
 (define-record movement-key direction press)
 (define-type movement-key movement-key?)
@@ -79,6 +84,24 @@
                                           (or (and (eq? direction 'left) (or (and press -1) +1))
                                               (and (eq? direction 'right) (or (and press +1) -1))))))))
 
+;; Walls creation
+
+(define (make-wall zone width)
+  (list zone 600 width))
+
+(define-record new-walls walls)
+(define-type new-walls new-walls?)
+(define new-walls
+  (frp:map
+   (lambda (_)
+     (make-new-walls
+      (list-tabulate 5 (lambda (_) (make-wall (random 6) 20)))))
+   (frp:every 0.5)))
+(define-generic (update (gamestate state) (new-walls new))
+  (let ((walls (new-walls-walls new)))
+    (update-gamestate state
+                      walls: (append walls (gamestate-walls state)))))
+
 
 (define state
   (frp:fold
@@ -90,24 +113,8 @@
                    walls: '())
    (frp:merge
     clock
-    movement-keys)))
-
-(define (make-wall zone width)
-  (list zone 600 width))
-
-(define make-walls
-  (let ((last 0))
-    (lambda (dt)
-      (if (>= (+ last dt) 500)
-          (begin
-            (set! last 0)
-            (map
-             (lambda (i)
-               (make-wall (random 6) 20))
-             (iota (random 5))))
-          (begin
-            (set! last (+ last dt))
-            '())))))
+    movement-keys
+    new-walls)))
 
 (define (update-wall dt wall)
   (list (car wall)
@@ -115,45 +122,11 @@
         (caddr wall)))
 
 (define (update-walls dt walls)
-  (append (make-walls (* 1000 dt))
-          (remove
-           (lambda (w)
-             (<= (+ (cadr w) (caddr w)) 0))
-           (map (cut update-wall (* 1000 dt) <>) walls))))
+  (remove
+   (lambda (w)
+     (<= (+ (cadr w) (caddr w)) 0))
+   (map (cut update-wall (* 1000 dt) <>) walls)))
 
-(define fps
-  (map-channel
-    (lambda (c) (if (zero? c)
-                  0
-                  (* (/ 1 c) 1000)))
-    clock))
-
-;; (define hex-angle (frp:map (lambda (t) (* t (/ pi 2))) time))
-
-
-(define movements
-  (fold-channel
-    (lambda (k prev)
-      (match k
-        (('key 'pressed #\b)  (list #t (second prev)))
-        (('key 'pressed #\p)  (list (first prev) #t))
-        (('key 'released #\b)  (list #f (second prev)))
-        (('key 'released #\p)  (list (first prev) #f))))
-    '(#f #f)
-    (filter-channel
-      (lambda (k)
-        (or (equal? k '(key pressed #\b))
-            (equal? k '(key released #\b))
-            (equal? k '(key pressed #\p))
-            (equal? k '(key released #\p))))
-      key-events)))
-
-(define (combine-clock-movement clock input)
-  (let ((dt (/ clock 1000)))
-    (if (apply xor input)
-      (* player-speed
-         (if (car input) (- dt) dt))
-      0)))
 
 (define (side-collisions walls position)
   (let* ((zone (angle->zone position))
