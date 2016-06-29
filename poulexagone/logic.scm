@@ -45,6 +45,17 @@
 
 ;; Per frame update
 
+(define (update-wall dt wall)
+  (list (car wall)
+        (- (cadr wall) (* dt walls-speed))
+        (caddr wall)))
+
+(define (update-walls dt walls)
+  (remove
+   (lambda (w)
+     (<= (+ (cadr w) (caddr w)) 0))
+   (map (cut update-wall (* 1000 dt) <>) walls)))
+
 (define (side-collisions walls position)
   (let* ((zone (angle->zone position))
          (low-walls (filter (lambda (w)
@@ -53,6 +64,13 @@
                             walls)))
     (list (any (lambda (w) (= (car w) (prev-zone zone))) low-walls)
           (any (lambda (w) (= (car w) (next-zone zone))) low-walls))))
+
+(define (death-collisions pos walls)
+  (filter (lambda (w)
+            (and (= (angle->zone pos) (car w))
+                 (<= (cadr w) (+ hexagon-radius 15))
+                 (>= (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
+          walls))
 
 (define (move-player increment walls previous-position)
   (let* ((collisions (side-collisions walls previous-position))
@@ -69,14 +87,18 @@
 (define clock (frp:map (lambda (_) (make-clock-tick (get-time))) new-frame))
 (define-generic (update (gamestate state) (clock-tick tick))
   (let* ((dt (- (clock-tick-time tick) (gamestate-last-update state)))
-         (new-walls (update-walls dt (gamestate-walls state))))
-    (update-gamestate state
-                      player-angle: (move-player (* dt (gamestate-player-speed state))
-                                                 new-walls
-                                                 (gamestate-player-angle state))
-                      board-angle: (clock-tick-time tick)
-                      last-update: (clock-tick-time tick)
-                      walls: new-walls)))
+         (new-walls (update-walls dt (gamestate-walls state)))
+         (new-position (move-player (* dt (gamestate-player-speed state))
+                                    new-walls
+                                    (gamestate-player-angle state)))
+         (death (pair? (death-collisions new-position new-walls))))
+    (if death
+        (exit 0)
+        (update-gamestate state
+                          player-angle: new-position
+                          board-angle: (clock-tick-time tick)
+                          last-update: (clock-tick-time tick)
+                          walls: new-walls))))
 
 
 ;; Movement inputs
@@ -136,27 +158,3 @@
     clock
     movement-keys
     new-walls)))
-
-(define (update-wall dt wall)
-  (list (car wall)
-        (- (cadr wall) (* dt walls-speed))
-        (caddr wall)))
-
-(define (update-walls dt walls)
-  (remove
-   (lambda (w)
-     (<= (+ (cadr w) (caddr w)) 0))
-   (map (cut update-wall (* 1000 dt) <>) walls)))
-
-
-(define death-collision
-  (map-channel
-    (lambda (pos walls)
-      (filter (lambda (w)
-                (and (= (angle->zone pos) (car w))
-                     (<= (cadr w) (+ hexagon-radius 15))
-                     (>= (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
-              walls))
-    (void) ;; player-position
-    walls))
-
