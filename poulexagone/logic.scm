@@ -1,15 +1,5 @@
 (use matchable)
 
-;; stub
-(define fold-channel void)
-(define map-channel void)
-(define filter-channel void)
-(define clock (void))
-(define key-events (void))
-(define walls (void))
-(define channel-value void)
-;;;
-
 ; Utility
 
 (define (xor a b)
@@ -158,3 +148,11 @@
     clock
     movement-keys
     new-walls)))
+
+
+;; FPS counter
+
+(define fps-counter
+  (let ((frame-counter (frp:fold (lambda (prev _) (add1 prev)) 0 new-frame))
+        (clock (frp:map (lambda (_) (get-time)) new-frame)))
+   (frp:map / frame-counter clock)))

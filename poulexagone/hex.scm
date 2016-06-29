@@ -20,7 +20,7 @@
 (include "poulexagone/logic")
 (include "poulexagone/draw")
 
-(define scene (frp:map draw-all state))
+(define scene (frp:map draw-all state fps-counter))
 
 (run-scene scene)
 
