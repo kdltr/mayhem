@@ -79,15 +79,6 @@
          char monitor new-frame))
 
   (define (run-scene scene)
-    (define dt 0)
-    (define frame-ticker
-      (make-thread
-       (lambda ()
-         (let loop ()
-           (wait-vblank)
-           (thread-sleep! (- 0.016 dt))
-           (notify-primitive-signal! new-frame #t)
-           (loop)))))
     (define tick-receiver (make-mailbox))
     (primitive-emitters-set!
      new-frame
@@ -98,20 +89,19 @@
     (emitters-set! scene (list scene-receiver))
 
     (start-signal-graph! scene)
-    (thread-start! frame-ticker)
     (let loop ()
       (nonblocking-swap-buffers)
       (gc #f)
       (poll-events)
-      ;; (notify-primitive-signal! new-frame #t)
+      (wait-vblank)
+      (poll-events)
+      (notify-primitive-signal! new-frame #t)
       (let loop2 ()
-        (let* ((tick-msg (mailbox-receive! tick-receiver 0 #f))
-               (scene-msg (if tick-msg (mailbox-receive! scene-receiver) #f)))
+        (let* ((tick-msg (mailbox-receive! tick-receiver))
+               (scene-msg (mailbox-receive! scene-receiver)))
           (if (equal? '(change #t) tick-msg)
               (begin (grab-context!)
-                     (let ((time-before (get-time)))
-                       ((cadr scene-msg)) ;; it's time to render
-                       (set! dt (- (get-time) time-before)))
+                     ((cadr scene-msg)) ;; it's time to render
                      (unless (window-should-close (window))
                        (loop)))
               (begin (poll-events)
