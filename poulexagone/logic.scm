@@ -148,7 +148,17 @@
               (5 600 20)))
     (make-pattern
      duration: 2
-     walls: '((1 600 300))))))
+     walls: '((0 600 80)
+              (3 600 80)
+              
+              (1 600 160)
+              (4 600 160)
+
+              (2 760 80)
+              (5 760 80)
+
+              (3 840 80)
+              (0 840 80))))))
 
 (define (random-rotation walls)
   (let ((rot (random 6)))
