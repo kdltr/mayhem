@@ -29,7 +29,8 @@
   board-angle
   player-speed
   player-angle
-  walls)
+  walls
+  walls-timeout)
 (define-type gamestate gamestate?)
 
 
@@ -80,7 +81,13 @@
 (define clock (frp:map (lambda (_) (make-clock-tick (get-time))) new-frame))
 (define-generic (update (gamestate state) (clock-tick tick))
   (let* ((dt (- (clock-tick-time tick) (gamestate-last-update state)))
-         (new-walls (update-walls dt (gamestate-walls state)))
+         (new-pattern? (>= (clock-tick-time tick) (gamestate-walls-timeout state)))
+         (new-pattern (and new-pattern? (random-pattern)))
+         (new-timeout (if new-pattern?
+                          (+ (clock-tick-time tick) (pattern-duration new-pattern))
+                          (gamestate-walls-timeout state)))
+         (new-walls (append (if new-pattern? (pattern-walls new-pattern) '())
+                            (update-walls dt (gamestate-walls state))))
          (new-position (move-player (* dt (gamestate-player-speed state))
                                     new-walls
                                     (gamestate-player-angle state)))
@@ -89,6 +96,7 @@
                       player-angle: new-position
                       board-angle: (clock-tick-time tick)
                       last-update: (clock-tick-time tick)
+                      walls-timeout: new-timeout
                       walls: new-walls)))
 
 
@@ -122,34 +130,35 @@
 
 (defstruct wall zone position height)
 
+(defstruct pattern walls duration)
+
 (define wall-patterns
   (map
    (lambda (p)
-     (map (lambda (w) (apply (cut make-wall zone: <> position: <> height: <>) w)) p))
-   '(((1 600 20)
-      (2 600 20)
-      (3 600 20)
-      (4 600 20)
-      (5 600 20))
-     ((1 600 300)))))
+     (update-pattern p
+                     walls: (map (lambda (w) (apply (cut make-wall zone: <> position: <> height: <>) w))
+                                 (pattern-walls p))))
+   (list
+    (make-pattern
+     duration: 0.5
+     walls: '((1 600 20)
+              (2 600 20)
+              (3 600 20)
+              (4 600 20)
+              (5 600 20)))
+    (make-pattern
+     duration: 2
+     walls: '((1 600 300))))))
 
 (define (random-rotation walls)
   (let ((rot (random 6)))
     (map (lambda (w) (update-wall w zone: (modulo (+ rot (wall-zone w)) 6)))
          walls)))
 
-(define-record new-walls walls)
-(define-type new-walls new-walls?)
-(define new-walls
-  (frp:map
-   (lambda (_)
-     (make-new-walls
-      (random-rotation (list-ref wall-patterns (random (length wall-patterns))))))
-   (frp:every 0.5)))
-(define-generic (update (gamestate state) (new-walls new))
-  (let ((walls (new-walls-walls new)))
-    (update-gamestate state
-                      walls: (append walls (gamestate-walls state)))))
+(define (random-pattern)
+  (let ((pat (list-ref wall-patterns (random (length wall-patterns)))))
+    (update-pattern pat
+     walls: (random-rotation (pattern-walls pat)))))
 
 
 (define state
@@ -159,11 +168,11 @@
                    board-angle: 0
                    player-speed: 0
                    player-angle: 0
-                   walls: '())
+                   walls: '()
+                   walls-timeout: 0)
    (frp:merge
     clock
-    movement-keys
-    new-walls)))
+    movement-keys)))
 
 
 ;; FPS counter
