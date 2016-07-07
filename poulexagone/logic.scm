@@ -82,12 +82,12 @@
 (define-generic (update (gamestate state) (clock-tick tick))
   (let* ((dt (- (clock-tick-time tick) (gamestate-last-update state)))
          (new-pattern? (>= (clock-tick-time tick) (gamestate-walls-timeout state)))
-         (new-pattern (and new-pattern? (random-pattern)))
+         (new-pattern (if new-pattern? (random-pattern) '()))
+         (new-walls (append new-pattern
+                            (update-walls dt (gamestate-walls state))))
          (new-timeout (if new-pattern?
                           (+ (clock-tick-time tick) (pattern-duration new-pattern))
                           (gamestate-walls-timeout state)))
-         (new-walls (append (if new-pattern? (pattern-walls new-pattern) '())
-                            (update-walls dt (gamestate-walls state))))
          (new-position (move-player (* dt (gamestate-player-speed state))
                                     new-walls
                                     (gamestate-player-angle state)))
@@ -130,35 +130,28 @@
 
 (defstruct wall zone position height)
 
-(defstruct pattern walls duration)
-
 (define wall-patterns
   (map
    (lambda (p)
-     (update-pattern p
-                     walls: (map (lambda (w) (apply (cut make-wall zone: <> position: <> height: <>) w))
-                                 (pattern-walls p))))
+     (map (lambda (w) (apply (cut make-wall zone: <> position: <> height: <>) w))
+          p))
    (list
-    (make-pattern
-     duration: 0.5
-     walls: '((1 600 20)
-              (2 600 20)
-              (3 600 20)
-              (4 600 20)
-              (5 600 20)))
-    (make-pattern
-     duration: 2
-     walls: '((0 600 80)
-              (3 600 80)
-              
-              (1 600 160)
-              (4 600 160)
+    ;; wall on each but one sides
+    '((1 600 20)
+      (2 600 20)
+      (3 600 20)
+      (4 600 20)
+      (5 600 20))
 
-              (2 760 80)
-              (5 760 80)
-
-              (3 840 80)
-              (0 840 80))))))
+    ;; Spiral
+    '((0 600 80)
+      (3 600 80)
+      (1 600 160)
+      (4 600 160)
+      (2 760 80)
+      (5 760 80)
+      (3 840 80)
+      (0 840 80)))))
 
 (define (random-rotation walls)
   (let ((rot (random 6)))
@@ -166,9 +159,22 @@
          walls)))
 
 (define (random-pattern)
-  (let ((pat (list-ref wall-patterns (random (length wall-patterns)))))
-    (update-pattern pat
-     walls: (random-rotation (pattern-walls pat)))))
+  (random-rotation
+   (list-ref wall-patterns (random (length wall-patterns)))))
+
+(define (wall-exterior w)
+  (+ (wall-position w) (wall-height w)))
+
+(define (pattern-duration walls)
+  (- (/ 1 (* (* 1000 walls-speed)
+             (/ 1 (fold (lambda (w prev) (max (wall-exterior w) prev))
+                        0
+                        walls))))
+     ;; two seconds to prevent waiting for the disappearance of the previous pattern
+     2))
+
+(use trace)
+(trace pattern-duration wall-exterior)
 
 
 (define state
