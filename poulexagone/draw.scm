@@ -131,7 +131,9 @@
     (nvg:scale! *c* 1 0.8)
     (nvg:rotate! *c* (gamestate-board-angle state))
 
-    (draw-background background-color-1 background-color-2)
+    (if (even? (floor (gamestate-last-update state)))
+        (draw-background background-color-1 background-color-2)
+        (draw-background background-color-2 background-color-1))
 
     ;; walls
     (for-each
