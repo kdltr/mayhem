@@ -137,11 +137,11 @@
           p))
    (list
     ;; wall on each but one sides
-    '((1 600 20)
-      (2 600 20)
-      (3 600 20)
-      (4 600 20)
-      (5 600 20))
+    '((1 600 60)
+      (2 600 60)
+      (3 600 60)
+      (4 600 60)
+      (5 600 60))
 
     ;; Spiral
     '((0 600 80)
@@ -151,7 +151,31 @@
       (2 760 80)
       (5 760 80)
       (3 840 80)
-      (0 840 80)))))
+      (0 840 80)
+      (1 920 80)
+      (4 920 80))
+
+    ;; Alternate
+    '((0 600 40)
+      (1 600 40)
+      (3 600 40)
+      (4 600 40)
+      (1 680 40)
+      (2 680 40)
+      (4 680 40)
+      (5 680 40)
+      (2 760 40)
+      (3 760 40)
+      (5 760 40)
+      (0 760 40)
+      (3 840 40)
+      (4 840 40)
+      (0 840 40)
+      (1 840 40)
+      (4 920 40)
+      (5 920 40)
+      (1 920 40)
+      (2 920 40)))))
 
 (define (random-rotation walls)
   (let ((rot (random 6)))
@@ -170,8 +194,8 @@
              (/ 1 (fold (lambda (w prev) (max (wall-exterior w) prev))
                         0
                         walls))))
-     ;; two seconds to prevent waiting for the disappearance of the previous pattern
-     2))
+     ;; some time to prevent waiting for the disappearance of the previous pattern
+     1.7))
 
 (use trace)
 (trace pattern-duration wall-exterior)
