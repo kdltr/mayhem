@@ -2,10 +2,6 @@
 
 ;; Utility
 
-(define (xor a b)
-  (and (or a b)
-       (not (and a b))))
-
 (define (angle->zone a)
   (modulo
     (inexact->exact
@@ -76,6 +72,39 @@
                                        (* player-speed
                                           (or (and (eq? direction 'left) (or (and press -1) +1))
                                               (and (eq? direction 'right) (or (and press +1) -1))))))))
+
+
+;; State drawing
+
+(define-generic (draw (gamestate state) fps)
+  (lambda ()
+    (begin-frame!)
+    (nvg:save-state! *c*)
+
+    (nvg:translate! *c* cx cy)
+    ;; fancy effects
+    (nvg:scale! *c* 1 0.8)
+    (nvg:rotate! *c* (gamestate-board-angle state))
+
+    (if (even? (floor (gamestate-last-update state)))
+        (draw-background background-color-1 background-color-2)
+        (draw-background background-color-2 background-color-1))
+
+    ;; walls
+    (for-each
+     (lambda (w)
+       (draw-wall (wall-zone w) (wall-position w) (wall-height w) wall-color))
+     (gamestate-walls state))
+
+    ;; player
+    (draw-hexagon hexagon-fill-color hexagon-stroke-color)
+    (draw-player (gamestate-player-angle state))
+
+    (nvg:restore-state! *c*)
+
+    ;; overlay
+    (draw-overlay state fps)
+    (end-frame!)))
 
 
 ;; Walls update and collisions
