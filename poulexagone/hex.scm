@@ -18,9 +18,27 @@
 (nvg:create-font! *c* "DejaVu" "/home/kooda/.guix-profile/share/fonts/truetype/DejaVuSansMono.ttf")
 
 (include "poulexagone/logic")
+(include "poulexagone/menus")
 (include "poulexagone/draw")
 
-(define scene (frp:map draw-all state fps-counter))
+(define state
+  (frp:fold
+   update
+   (gameover 0)
+   ;; initial-gamestate
+   (frp:merge
+    clock
+    movement-keys
+    spacebar
+    )))
+
+(define fps-counter
+  (let ((frame-counter (frp:fold (lambda (prev _) (add1 prev)) 0 new-frame))
+        (clock (frp:map (lambda (_) (get-time)) new-frame)))
+   (frp:map / frame-counter clock)))
+
+
+(define scene (frp:map draw state fps-counter))
 
 (run-scene scene)
 

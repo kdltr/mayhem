@@ -31,7 +31,11 @@
   player-angle
   walls
   walls-timeout)
+
 (define-type gamestate gamestate?)
+
+(define-generic (update (gamestate state) (any _))
+  state)
 
 
 ;; Per frame update
@@ -92,12 +96,14 @@
                                     new-walls
                                     (gamestate-player-angle state)))
          (death (pair? (death-collisions new-position new-walls))))
-    (update-gamestate state
-                      player-angle: new-position
-                      board-angle: (clock-tick-time tick)
-                      last-update: (clock-tick-time tick)
-                      walls-timeout: new-timeout
-                      walls: new-walls)))
+    (if death
+        (gameover 0)
+        (update-gamestate state
+                          player-angle: new-position
+                          board-angle: (clock-tick-time tick)
+                          last-update: (clock-tick-time tick)
+                          walls-timeout: new-timeout
+                          walls: new-walls))))
 
 
 ;; Movement inputs
@@ -125,6 +131,16 @@
                                        (* player-speed
                                           (or (and (eq? direction 'left) (or (and press -1) +1))
                                               (and (eq? direction 'right) (or (and press +1) -1))))))))
+
+(define-record spacebar-pressed)
+(define-type spacebar-pressed spacebar-pressed?)
+(define spacebar
+  (frp:map
+   (lambda (_) (make-spacebar-pressed))
+   (frp:filter
+    (cut equal? <> '(32 65 1 0))
+    #f
+    key)))
 
 ;; Walls creation
 
@@ -197,27 +213,11 @@
      ;; some time to prevent waiting for the disappearance of the previous pattern
      1.7))
 
-(use trace)
-(trace pattern-duration wall-exterior)
 
-
-(define state
-  (frp:fold
-   update
-   (make-gamestate last-update: (get-time)
-                   board-angle: 0
-                   player-speed: 0
-                   player-angle: 0
-                   walls: '()
-                   walls-timeout: 0)
-   (frp:merge
-    clock
-    movement-keys)))
-
-
-;; FPS counter
-
-(define fps-counter
-  (let ((frame-counter (frp:fold (lambda (prev _) (add1 prev)) 0 new-frame))
-        (clock (frp:map (lambda (_) (get-time)) new-frame)))
-   (frp:map / frame-counter clock)))
+(define initial-gamestate
+  (make-gamestate last-update: (get-time)
+                  board-angle: 0
+                  player-speed: 0
+                  player-angle: 0
+                  walls: '()
+                  walls-timeout: 0))

@@ -120,10 +120,19 @@
   (nvg:text! *c* 10 48
         (sprintf "Zone ~A" (angle->zone (gamestate-player-angle state)))))
 
-(define (draw-all state fps)
+
+(define (begin-frame!)
+  (gl:ClearColor 0 0 0 1)
+  (gl:Clear (+ gl:COLOR_BUFFER_BIT gl:STENCIL_BUFFER_BIT))
+  (nvg:begin-frame! *c* width height (/ fbwidth width)))
+
+(define (end-frame!)
+  (nvg:end-frame! *c*))
+
+
+(define-generic (draw (gamestate state) fps)
   (lambda ()
-    (gl:Clear (+ gl:COLOR_BUFFER_BIT gl:STENCIL_BUFFER_BIT))
-    (nvg:begin-frame! *c* width height (/ fbwidth width))
+    (begin-frame!)
     (nvg:save-state! *c*)
 
     (nvg:translate! *c* cx cy)
@@ -149,4 +158,15 @@
 
     ;; overlay
     (draw-overlay state fps)
-    (nvg:end-frame! *c*)))
+    (end-frame!)))
+
+(define-generic (draw (overstate state) fps)
+  (lambda ()
+    (begin-frame!)
+    (nvg:begin-path! *c*)
+    (nvg:font-size! *c* 24)
+    (nvg:font-face! *c* "DejaVu")
+    (nvg:fill-color! *c* white)
+    (nvg:text! *c* 10 24 "Game over")
+    (nvg:text! *c* 10 48 "Press space to restart")
+    (end-frame!)))
