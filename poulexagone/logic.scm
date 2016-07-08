@@ -1,6 +1,6 @@
 (use matchable)
 
-; Utility
+;; Utility
 
 (define (xor a b)
   (and (or a b)
@@ -34,11 +34,51 @@
 
 (define-type gamestate gamestate?)
 
-(define-generic (update (gamestate state) (any _))
-  state)
+(define initial-gamestate
+  (make-gamestate last-update: (get-time)
+                  board-angle: 0
+                  player-speed: 0
+                  player-angle: 0
+                  walls: '()
+                  walls-timeout: 0))
 
 
-;; Per frame update
+;; State update functions
+
+(define-generic (update (gamestate state) (clock-tick tick))
+  (let* ((dt (- (clock-tick-time tick) (gamestate-last-update state)))
+         (new-pattern? (>= (clock-tick-time tick) (gamestate-walls-timeout state)))
+         (new-pattern (if new-pattern? (random-pattern) '()))
+         (new-walls (append new-pattern
+                            (update-walls dt (gamestate-walls state))))
+         (new-timeout (if new-pattern?
+                          (+ (clock-tick-time tick) (pattern-duration new-pattern))
+                          (gamestate-walls-timeout state)))
+         (new-position (move-player (* dt (gamestate-player-speed state))
+                                    new-walls
+                                    (gamestate-player-angle state)))
+         (death (pair? (death-collisions new-position new-walls))))
+    (if death
+        (gameover 0)
+        (update-gamestate state
+                          player-angle: new-position
+                          board-angle: (clock-tick-time tick)
+                          last-update: (clock-tick-time tick)
+                          walls-timeout: new-timeout
+                          walls: new-walls))))
+
+(define-generic (update (gamestate state) (movement-key key))
+  (let ((speed (gamestate-player-speed state))
+        (direction (movement-key-direction key))
+        (press (movement-key-press key)))
+    (update-gamestate state
+                      player-speed: (+ speed
+                                       (* player-speed
+                                          (or (and (eq? direction 'left) (or (and press -1) +1))
+                                              (and (eq? direction 'right) (or (and press +1) -1))))))))
+
+
+;; Walls update and collisions
 
 (define (update-wall* dt wall)
   (let ((new-pos (- (wall-position wall) (* dt walls-speed))))
@@ -80,67 +120,6 @@
       ((and (cadr collisions) (= new-zone (next-zone old-zone)))  previous-position)
       (else position))))
 
-(define-record clock-tick time)
-(define-type clock-tick clock-tick?)
-(define clock (frp:map (lambda (_) (make-clock-tick (get-time))) new-frame))
-(define-generic (update (gamestate state) (clock-tick tick))
-  (let* ((dt (- (clock-tick-time tick) (gamestate-last-update state)))
-         (new-pattern? (>= (clock-tick-time tick) (gamestate-walls-timeout state)))
-         (new-pattern (if new-pattern? (random-pattern) '()))
-         (new-walls (append new-pattern
-                            (update-walls dt (gamestate-walls state))))
-         (new-timeout (if new-pattern?
-                          (+ (clock-tick-time tick) (pattern-duration new-pattern))
-                          (gamestate-walls-timeout state)))
-         (new-position (move-player (* dt (gamestate-player-speed state))
-                                    new-walls
-                                    (gamestate-player-angle state)))
-         (death (pair? (death-collisions new-position new-walls))))
-    (if death
-        (gameover 0)
-        (update-gamestate state
-                          player-angle: new-position
-                          board-angle: (clock-tick-time tick)
-                          last-update: (clock-tick-time tick)
-                          walls-timeout: new-timeout
-                          walls: new-walls))))
-
-
-;; Movement inputs
-
-(define-record movement-key direction press)
-(define-type movement-key movement-key?)
-(define movement-keys
-  (frp:map
-   (lambda (k)
-     (let ((key (cadr k))
-           (action (caddr k)))
-       (make-movement-key (case key ((38) 'left) ((40) 'right))
-                          (case action ((0) #f) ((1) #t)))))
-   (frp:filter (lambda (k)
-                 (and (pair? k)
-                      (not (= (caddr k) 2))
-                      (or (= (cadr k) 38) (= (cadr k) 40))))
-               '(0 38 0 0) key)))
-(define-generic (update (gamestate state) (movement-key key))
-  (let ((speed (gamestate-player-speed state))
-        (direction (movement-key-direction key))
-        (press (movement-key-press key)))
-    (update-gamestate state
-                      player-speed: (+ speed
-                                       (* player-speed
-                                          (or (and (eq? direction 'left) (or (and press -1) +1))
-                                              (and (eq? direction 'right) (or (and press +1) -1))))))))
-
-(define-record spacebar-pressed)
-(define-type spacebar-pressed spacebar-pressed?)
-(define spacebar
-  (frp:map
-   (lambda (_) (make-spacebar-pressed))
-   (frp:filter
-    (cut equal? <> '(32 65 1 0))
-    #f
-    key)))
 
 ;; Walls creation
 
@@ -212,12 +191,3 @@
                         walls))))
      ;; some time to prevent waiting for the disappearance of the previous pattern
      1.7))
-
-
-(define initial-gamestate
-  (make-gamestate last-update: (get-time)
-                  board-angle: 0
-                  player-speed: 0
-                  player-angle: 0
-                  walls: '()
-                  walls-timeout: 0))

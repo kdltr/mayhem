@@ -4,9 +4,6 @@
 
 (define-type overstate overstate?)
 
-(define-generic (update (overstate state) (any _))
-  state)
-
 (define-generic (update (overstate state) (spacebar-pressed _))
   initial-gamestate)
 

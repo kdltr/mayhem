@@ -17,6 +17,14 @@
 (define *c* (nvg:create-context))
 (nvg:create-font! *c* "DejaVu" "/home/kooda/.guix-profile/share/fonts/truetype/DejaVuSansMono.ttf")
 
+(define-generic (update (any state) (any _))
+  state)
+
+(define-generic (draw (any state) (any _))
+  (print "Trying to draw an unknown state: " state)
+  void)
+
+(include "poulexagone/signals")
 (include "poulexagone/logic")
 (include "poulexagone/menus")
 (include "poulexagone/draw")
