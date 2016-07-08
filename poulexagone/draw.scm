@@ -111,13 +111,13 @@
   (nvg:font-face! *c* "DejaVu")
   (nvg:fill-color! *c* white)
   ;; fps
-  (nvg:text! *c* 10 10 (sprintf "~A fps" fps))
+  (nvg:text! *c* 10 12 (sprintf "~A fps" fps))
   ;; time elapsed
-  (nvg:text! *c* 10 30 (sprintf "~A" (gamestate-last-update state)))
+  (nvg:text! *c* 10 24 (sprintf "~A" (gamestate-last-update state)))
   ;; player angle
-  (nvg:text! *c* 10 50
+  (nvg:text! *c* 10 36
         (sprintf "~A°" (gamestate-player-angle state)))
-  (nvg:text! *c* 10 70
+  (nvg:text! *c* 10 48
         (sprintf "Zone ~A" (angle->zone (gamestate-player-angle state)))))
 
 (define (draw-all state fps)
