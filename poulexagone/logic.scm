@@ -55,7 +55,10 @@
                                     (gamestate-player-angle state)))
          (death (pair? (death-collisions new-position new-walls))))
     (if death
-        (gameover 0)
+        (make-overtrans
+         start: (clock-tick-time tick)
+         percent: 0
+         overstate: (gameover 0 (clock-tick-time tick) (clock-tick-time tick)))
         (update-gamestate state
                           player-angle: new-position
                           board-angle: (clock-tick-time tick)

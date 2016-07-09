@@ -32,7 +32,7 @@
 (define state
   (frp:fold
    update
-   (gameover 0)
+   (gameover 0 0 0)
    ;; initial-gamestate
    (frp:merge
     clock

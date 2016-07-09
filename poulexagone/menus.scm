@@ -1,19 +1,37 @@
 (defstruct overstate
   latest-score
+  last-update
   background-angle)
 
 (define-type overstate overstate?)
 
-(define (gameover score)
-  (make-overstate latest-score: score))
+(define (gameover score date angle)
+  (make-overstate latest-score: score
+                  last-update: date
+                  background-angle: angle))
 
 
 (define-generic (update (overstate state) (spacebar-pressed _))
   initial-gamestate)
 
+(define-generic (update (overstate state) (clock-tick tick))
+  (let ((t (clock-tick-time tick)))
+    (update-overstate state
+                      last-update: t
+                      background-angle: (+ (overstate-background-angle state)
+                                           (- t (overstate-last-update state))))))
+
 (define-generic (draw (overstate state) fps)
   (lambda ()
     (begin-frame!)
+    (nvg:save-state! *c*)
+    (nvg:translate! *c* cx (+ cy 400))
+    (nvg:scale! *c* 4 4)
+    (nvg:rotate! *c* (overstate-background-angle state))
+    (draw-background background-color-1 background-color-2)
+    (draw-hexagon hexagon-fill-color hexagon-stroke-color)
+
+    (nvg:restore-state! *c*)
     (nvg:begin-path! *c*)
     (nvg:font-size! *c* 24)
     (nvg:font-face! *c* "DejaVu")
@@ -21,3 +39,45 @@
     (nvg:text! *c* 10 24 "Game over")
     (nvg:text! *c* 10 48 "Press space to restart")
     (end-frame!)))
+
+
+;; Transition state game -> over
+
+(define (lerp v0 v1 t)
+  (+ (* (- 1 t) v0)
+     (* t v1)))
+
+(defstruct overtrans
+  start
+  percent
+  overstate)
+
+(define-type overtrans overtrans?)
+
+(define-generic (update (overtrans state) (clock-tick tick))
+  (let* ((start (overtrans-start state))
+         (stop (+ start 0.3))
+         (now (clock-tick-time tick))
+         (percent (/ (- now start)
+                     (- stop start))))
+    (if (>= percent 1)
+        (overtrans-overstate state)
+        (let ((overstate (overtrans-overstate state)))
+          (update-overtrans state
+            percent: percent
+            overstate: (update-overstate overstate
+                         last-update: now
+                         background-angle: (+ (overstate-background-angle overstate)
+                                              (- now (overstate-last-update overstate)))))))))
+
+(define-generic (draw (overtrans state) fps)
+  (let ((percent (overtrans-percent state)))
+    (lambda ()
+      (begin-frame!)
+      (nvg:translate! *c* cx (lerp cy (+ cy 400) percent))
+      (nvg:scale! *c* (lerp 1 4 percent) (lerp 0.8 4 percent))
+      (nvg:rotate! *c* (overstate-background-angle (overtrans-overstate state)))
+      (draw-background background-color-1 background-color-2)
+      (draw-hexagon hexagon-fill-color hexagon-stroke-color)
+      (end-frame!)
+      )))
