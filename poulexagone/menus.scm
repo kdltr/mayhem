@@ -46,6 +46,10 @@
   (+ (* (- 1 t) v0)
      (* t v1)))
 
+(define (sinrp v0 v1 t)
+  (+ (* (- 1 (sin (* (/ pi 2) t))) v0)
+     (* (sin (* (/ pi 2) t)) v1)))
+
 (defstruct overtrans
   start
   percent
@@ -80,13 +84,13 @@
     (lambda ()
       (begin-frame!)
       (nvg:translate! *c* cx (if flip?
-                                 (lerp (+ cy 400) cy percent)
-                                 (lerp cy (+ cy 400) percent)))
+                                 (sinrp (+ cy 400) cy percent)
+                                 (sinrp cy (+ cy 400) percent)))
       (nvg:scale! *c*
-                  (if flip? (lerp 4 1 percent)
-                      (lerp 1 4 percent))
-                  (if flip? (lerp 4 0.8 percent)
-                      (lerp 0.8 4 percent)))
+                  (if flip? (sinrp 4 1 percent)
+                      (sinrp 1 4 percent))
+                  (if flip? (sinrp 3.8 0.8 percent)
+                      (sinrp 0.8 3.8 percent)))
       (draw-board (overtrans-board state) void flip-colors: #f)
       (end-frame!)
       )))
