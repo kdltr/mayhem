@@ -55,10 +55,10 @@
                                     (gamestate-player-angle state)))
          (death (pair? (death-collisions new-position new-walls))))
     (if death
-        (make-overtrans
-         start: (clock-tick-time tick)
-         percent: 0
-         overstate: (gameover 0 (clock-tick-time tick) (clock-tick-time tick)))
+        (overtrans
+         (clock-tick-time tick)
+         (gamestate-board-angle state)
+         (gameover 0 (clock-tick-time tick) (clock-tick-time tick)))
         (update-gamestate state
                           player-angle: new-position
                           board-angle: (clock-tick-time tick)
@@ -106,7 +106,7 @@
     (nvg:restore-state! *c*)
 
     ;; overlay
-    (draw-overlay state fps)
+    ;; (draw-overlay state fps)
     (end-frame!)))
 
 

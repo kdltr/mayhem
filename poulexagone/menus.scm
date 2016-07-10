@@ -12,7 +12,9 @@
 
 
 (define-generic (update (overstate state) (spacebar-pressed _))
-  initial-gamestate)
+  (overtrans (overstate-last-update state)
+             (overstate-background-angle state)
+             initial-gamestate))
 
 (define-generic (update (overstate state) (clock-tick tick))
   (let ((t (clock-tick-time tick)))
@@ -50,7 +52,12 @@
 (defstruct overtrans
   start
   percent
-  overstate)
+  angle
+  last-update
+  next-state)
+
+(define (overtrans start angle next)
+  (make-overtrans start: start percent: 0 angle: angle last-update: start next-state: next))
 
 (define-type overtrans overtrans?)
 
@@ -61,22 +68,37 @@
          (percent (/ (- now start)
                      (- stop start))))
     (if (>= percent 1)
-        (overtrans-overstate state)
-        (let ((overstate (overtrans-overstate state)))
-          (update-overtrans state
-            percent: percent
-            overstate: (update-overstate overstate
-                         last-update: now
-                         background-angle: (+ (overstate-background-angle overstate)
-                                              (- now (overstate-last-update overstate)))))))))
+        (let ((next (overtrans-next-state state)))
+          (cond ((overstate? next)
+                 (update-overstate
+                  (overtrans-next-state state)
+                  last-update: now
+                  background-angle: (overtrans-angle state)))
+                ((gamestate? next)
+                 (update-gamestate
+                  initial-gamestate
+                  last-upgrade: now
+                  board-angle: (overtrans-angle state)))))
+        (update-overtrans
+         state
+         percent: percent
+         last-update: now
+         angle: (+ (overtrans-angle state) (- now (overtrans-last-update state)))))))
 
 (define-generic (draw (overtrans state) fps)
-  (let ((percent (overtrans-percent state)))
+  (let ((percent (overtrans-percent state))
+        (flip? (gamestate? (overtrans-next-state state))))
     (lambda ()
       (begin-frame!)
-      (nvg:translate! *c* cx (lerp cy (+ cy 400) percent))
-      (nvg:scale! *c* (lerp 1 4 percent) (lerp 0.8 4 percent))
-      (nvg:rotate! *c* (overstate-background-angle (overtrans-overstate state)))
+      (nvg:translate! *c* cx (if flip?
+                                 (lerp (+ cy 400) cy percent)
+                                 (lerp cy (+ cy 400) percent)))
+      (nvg:scale! *c*
+                  (if flip? (lerp 4 1 percent)
+                      (lerp 1 4 percent))
+                  (if flip? (lerp 4 0.8 percent)
+                      (lerp 0.8 4 percent)))
+      (nvg:rotate! *c* (overtrans-angle state))
       (draw-background background-color-1 background-color-2)
       (draw-hexagon hexagon-fill-color hexagon-stroke-color)
       (end-frame!)
