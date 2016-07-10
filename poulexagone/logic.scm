@@ -21,34 +21,35 @@
 (define walls-speed 1/4)
 
 (defstruct gamestate
-  last-update
-  board-angle
   player-speed
   player-angle
+  last-update
   walls
-  walls-timeout)
+  walls-timeout
+  board)
 
 (define-type gamestate gamestate?)
 
 (define initial-gamestate
-  (make-gamestate last-update: (get-time)
-                  board-angle: 0
-                  player-speed: 0
+  (make-gamestate player-speed: 0
                   player-angle: 0
                   walls: '()
-                  walls-timeout: 0))
+                  walls-timeout: 0
+                  last-update: (get-time)
+                  board: (make-board last-update: (get-time) angle: 0)))
 
 
 ;; State update functions
 
 (define-generic (update (gamestate state) (clock-tick tick))
-  (let* ((dt (- (clock-tick-time tick) (gamestate-last-update state)))
-         (new-pattern? (>= (clock-tick-time tick) (gamestate-walls-timeout state)))
+  (let* ((now (clock-tick-time tick))
+         (dt (- now (gamestate-last-update state)))
+         (new-pattern? (>= now (gamestate-walls-timeout state)))
          (new-pattern (if new-pattern? (random-pattern) '()))
          (new-walls (append new-pattern
                             (update-walls dt (gamestate-walls state))))
          (new-timeout (if new-pattern?
-                          (+ (clock-tick-time tick) (pattern-duration new-pattern))
+                          (+ now (pattern-duration new-pattern))
                           (gamestate-walls-timeout state)))
          (new-position (move-player (* dt (gamestate-player-speed state))
                                     new-walls
@@ -56,15 +57,16 @@
          (death (pair? (death-collisions new-position new-walls))))
     (if death
         (overtrans
-         (clock-tick-time tick)
-         (gamestate-board-angle state)
-         (gameover 0 (clock-tick-time tick) (clock-tick-time tick)))
-        (update-gamestate state
-                          player-angle: new-position
-                          board-angle: (clock-tick-time tick)
-                          last-update: (clock-tick-time tick)
-                          walls-timeout: new-timeout
-                          walls: new-walls))))
+         now
+         (gameover 0 (gamestate-board state))
+         (gamestate-board state))
+        (update-gamestate
+         state
+         player-angle: new-position
+         board: (update (gamestate-board state) now)
+         last-update: now
+         walls-timeout: new-timeout
+         walls: new-walls))))
 
 (define-generic (update (gamestate state) (movement-key key))
   (let ((speed (gamestate-player-speed state))
@@ -85,28 +87,22 @@
     (nvg:save-state! *c*)
 
     (nvg:translate! *c* cx cy)
+
     ;; fancy effects
     (nvg:scale! *c* 1 0.8)
-    (nvg:rotate! *c* (gamestate-board-angle state))
 
-    (if (even? (floor (gamestate-last-update state)))
-        (draw-background background-color-1 background-color-2)
-        (draw-background background-color-2 background-color-1))
+    (draw-board
+     (gamestate-board state)
+     ;; walls
+     (lambda ()
+       (for-each
+        (lambda (w)
+          (draw-wall (wall-zone w) (wall-position w) (wall-height w) wall-color))
+        (gamestate-walls state))))
 
-    ;; walls
-    (for-each
-     (lambda (w)
-       (draw-wall (wall-zone w) (wall-position w) (wall-height w) wall-color))
-     (gamestate-walls state))
-
-    ;; player
-    (draw-hexagon hexagon-fill-color hexagon-stroke-color)
     (draw-player (gamestate-player-angle state))
 
     (nvg:restore-state! *c*)
-
-    ;; overlay
-    ;; (draw-overlay state fps)
     (end-frame!)))
 
 

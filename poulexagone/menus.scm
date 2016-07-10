@@ -1,27 +1,24 @@
 (defstruct overstate
   latest-score
-  last-update
-  background-angle)
+  board)
 
 (define-type overstate overstate?)
 
-(define (gameover score date angle)
+(define (gameover score board)
   (make-overstate latest-score: score
-                  last-update: date
-                  background-angle: angle))
+                  board: board))
 
-
+;; TODO
 (define-generic (update (overstate state) (spacebar-pressed _))
-  (overtrans (overstate-last-update state)
-             (overstate-background-angle state)
-             initial-gamestate))
+  (overtrans (board-last-update (overstate-board state))
+             initial-gamestate
+             (overstate-board state)))
 
 (define-generic (update (overstate state) (clock-tick tick))
-  (let ((t (clock-tick-time tick)))
-    (update-overstate state
-                      last-update: t
-                      background-angle: (+ (overstate-background-angle state)
-                                           (- t (overstate-last-update state))))))
+  (let ((now (clock-tick-time tick)))
+    (update-overstate
+     state
+     board: (update (overstate-board state) now))))
 
 (define-generic (draw (overstate state) fps)
   (lambda ()
@@ -29,9 +26,9 @@
     (nvg:save-state! *c*)
     (nvg:translate! *c* cx (+ cy 400))
     (nvg:scale! *c* 4 4)
-    (nvg:rotate! *c* (overstate-background-angle state))
-    (draw-background background-color-1 background-color-2)
-    (draw-hexagon hexagon-fill-color hexagon-stroke-color)
+
+    (draw-board (overstate-board state) void
+                flip-colors: #f)
 
     (nvg:restore-state! *c*)
     (nvg:begin-path! *c*)
@@ -52,12 +49,11 @@
 (defstruct overtrans
   start
   percent
-  angle
-  last-update
-  next-state)
+  next-state
+  board)
 
-(define (overtrans start angle next)
-  (make-overtrans start: start percent: 0 angle: angle last-update: start next-state: next))
+(define (overtrans start next board)
+  (make-overtrans start: start percent: 0 next-state: next board: board))
 
 (define-type overtrans overtrans?)
 
@@ -70,20 +66,13 @@
     (if (>= percent 1)
         (let ((next (overtrans-next-state state)))
           (cond ((overstate? next)
-                 (update-overstate
-                  (overtrans-next-state state)
-                  last-update: now
-                  background-angle: (overtrans-angle state)))
+                 (update-overstate next board: (overtrans-board state)))
                 ((gamestate? next)
-                 (update-gamestate
-                  initial-gamestate
-                  last-upgrade: now
-                  board-angle: (overtrans-angle state)))))
+                 (update-gamestate next board: (overtrans-board state)))))
         (update-overtrans
          state
          percent: percent
-         last-update: now
-         angle: (+ (overtrans-angle state) (- now (overtrans-last-update state)))))))
+         board: (update (overtrans-board state) now)))))
 
 (define-generic (draw (overtrans state) fps)
   (let ((percent (overtrans-percent state))
@@ -98,8 +87,6 @@
                       (lerp 1 4 percent))
                   (if flip? (lerp 4 0.8 percent)
                       (lerp 0.8 4 percent)))
-      (nvg:rotate! *c* (overtrans-angle state))
-      (draw-background background-color-1 background-color-2)
-      (draw-hexagon hexagon-fill-color hexagon-stroke-color)
+      (draw-board (overtrans-board state) void flip-colors: #f)
       (end-frame!)
       )))

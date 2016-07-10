@@ -24,6 +24,7 @@
   (print "Trying to draw an unknown state: " state)
   void)
 
+(include "poulexagone/common")
 (include "poulexagone/signals")
 (include "poulexagone/logic")
 (include "poulexagone/menus")
@@ -32,7 +33,7 @@
 (define state
   (frp:fold
    update
-   (gameover 0 0 0)
+   (gameover 0 (make-board last-update: (get-time) angle: 0))
    ;; initial-gamestate
    (frp:merge
     clock
