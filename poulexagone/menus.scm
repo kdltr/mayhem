@@ -8,11 +8,13 @@
   (make-overstate latest-score: score
                   board: board))
 
-;; TODO
 (define-generic (update (overstate state) (spacebar-pressed _))
   (overtrans (board-last-update (overstate-board state))
              initial-gamestate
              (overstate-board state)))
+
+(define-generic (update (overstate state) (escape-pressed _))
+  (exit 0))
 
 (define-generic (update (overstate state) (clock-tick tick))
   (let ((now (clock-tick-time tick)))

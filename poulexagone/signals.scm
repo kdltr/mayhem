@@ -37,3 +37,13 @@
     (cut equal? <> '(32 65 1 0))
     #f
     key)))
+
+(define-record escape-pressed)
+(define-type escape-pressed escape-pressed?)
+(define escape
+  (frp:map
+   (lambda (_) (make-escape-pressed))
+   (frp:filter
+    (cut equal? <> '(256 9 1 0))
+    #f
+    key)))

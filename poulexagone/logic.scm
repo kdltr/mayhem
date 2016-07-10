@@ -78,6 +78,11 @@
                                           (or (and (eq? direction 'left) (or (and press -1) +1))
                                               (and (eq? direction 'right) (or (and press +1) -1))))))))
 
+(define-generic (update (gamestate state) (escape-pressed _))
+  (overtrans (gamestate-last-update state)
+             (gameover 0 (gamestate-board state))
+             (gamestate-board state)))
+
 
 ;; State drawing
 

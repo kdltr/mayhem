@@ -39,6 +39,7 @@
     clock
     movement-keys
     spacebar
+    escape
     )))
 
 (define fps-counter
