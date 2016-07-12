@@ -102,7 +102,12 @@
      (lambda ()
        (for-each
         (lambda (w)
-          (draw-wall (wall-zone w) (wall-position w) (wall-height w) wall-color))
+          (let* ((player-zone (angle->zone (gamestate-player-angle state)))
+                 (wall-zone (wall-zone w))
+                 (color (cond ((= wall-zone player-zone) wall-color-highlight)
+                              ((= wall-zone (modulo (+ player-zone 3) 6)) wall-color-downlight)
+                              (else wall-color))))
+            (draw-wall wall-zone (wall-position w) (wall-height w) color)))
         (gamestate-walls state))))
 
     (draw-player (gamestate-player-angle state))

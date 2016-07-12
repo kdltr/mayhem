@@ -21,12 +21,15 @@
 ;; Colors
 
 (define white (nvg:make-color-rgbf 1 1 1))
-(define player-color (nvg:make-color-rgbf 0.6 0.6 1))
-(define hexagon-fill-color (nvg:make-color-rgbf 0.1 0.1 0.3))
-(define hexagon-stroke-color (nvg:make-color-rgbf 0 0 1))
-(define background-color-1 (nvg:make-color-rgbf 0.4 0.4 0.6))
-(define background-color-2 (nvg:make-color-rgbf 0.1 0.1 0.3))
-(define wall-color (nvg:make-color-rgbf 1 1 0))
+(define player-color (nvg:make-color-rgb 64 102 218))
+(define hexagon-fill-color (nvg:make-color-rgb 6 15 70))
+(define hexagon-stroke-color (nvg:make-color-rgb 59 76 198))
+(define background-color-1 (nvg:make-color-rgb 8 21 105))
+(define background-color-2 (nvg:make-color-rgb 6 15 70))
+
+(define wall-color (nvg:make-color-rgb 59 76 198))
+(define wall-color-highlight (nvg:make-color-rgb 64 102 218))
+(define wall-color-downlight (nvg:make-color-rgb 51 66 174))
 
 
 ;; Game
