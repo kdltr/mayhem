@@ -3,9 +3,19 @@
   last-pulse
   pulse
   flip
-  angle)
+  angle
+  speed)
 
 (define-type board board?)
+
+(define initial-board
+  (make-board
+   last-update: (get-time)
+   angle: 0
+   pulse: 0
+   last-pulse: (get-time)
+   flip: #f
+   speed: 1))
 
 (define-generic (update (board board) now)
   (let ((percent (/ (- now (board-last-pulse board)) 0.5)))
@@ -16,7 +26,7 @@
     pulse: percent
     last-update: now
     angle: (+ (board-angle board)
-              (- now (board-last-update board))))))
+              (* (board-speed board) (- now (board-last-update board)))))))
 
 (define (draw-board board between #!key (flip-colors #t))
   (nvg:rotate! *c* (board-angle board))

@@ -33,7 +33,7 @@
 (define state
   (frp:fold
    update
-   (gameover 0 (make-board last-update: (get-time) angle: 0 pulse: 0 last-pulse: (get-time) flip: #f))
+   (gameover 0 initial-board)
    ;; initial-gamestate
    (frp:merge
     clock
