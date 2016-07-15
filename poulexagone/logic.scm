@@ -26,6 +26,7 @@
   last-update
   walls
   walls-timeout
+  next-speed-change
   board)
 
 (define-type gamestate gamestate?)
@@ -36,6 +37,7 @@
                   walls: '()
                   walls-timeout: 0
                   last-update: (get-time)
+                  next-speed-change: (+ (get-time) 10)
                   board: (make-board last-update: (get-time) angle: 0)))
 
 
@@ -54,7 +56,15 @@
          (new-position (move-player (* dt (gamestate-player-speed state))
                                     new-walls
                                     (gamestate-player-angle state)))
-         (death (pair? (death-collisions new-position new-walls))))
+         (death (pair? (death-collisions new-position new-walls)))
+         (speed-change (gamestate-next-speed-change state))
+         (speed-change? (>= now speed-change))
+         (new-speed-change (if speed-change? (+ now (+ 10 (random 10))) speed-change))
+         (board (gamestate-board state))
+         (new-speed (- (random 5) 2))
+         (new-board (if speed-change?
+                        (update-board board speed: new-speed)
+                        board)))
     (if death
         (overtrans
          now
@@ -63,7 +73,8 @@
         (update-gamestate
          state
          player-angle: new-position
-         board: (update (gamestate-board state) now)
+         board: (update new-board now)
+         next-speed-change: new-speed-change
          last-update: now
          walls-timeout: new-timeout
          walls: new-walls))))
