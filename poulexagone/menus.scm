@@ -93,6 +93,13 @@
                       (sinrp 1 4 percent))
                   (if flip? (sinrp 3.8 0.8 percent)
                       (sinrp 0.8 3.8 percent)))
+      (let* ((board (overtrans-board state))
+             (skew (* (board-speed board) 0.02)))
+       (nvg:skew-x! *c*
+                    (if flip?
+                        (sinrp 0 skew percent)
+                        (sinrp skew 0 percent))))
+
       (draw-board (overtrans-board state) void flip-colors: #f)
       (end-frame!)
       )))

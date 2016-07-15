@@ -59,11 +59,11 @@
          (death (pair? (death-collisions new-position new-walls)))
          (speed-change (gamestate-next-speed-change state))
          (speed-change? (>= now speed-change))
-         (new-speed-change (if speed-change? (+ now (+ 10 (random 10))) speed-change))
+         (new-speed-change (if speed-change? (+ now (+ 3 (random 10))) speed-change))
          (board (gamestate-board state))
          (new-speed (- (random 5) 2))
          (new-board (if speed-change?
-                        (update-board board speed: new-speed)
+                        (update-board board speed: (if (zero? new-speed) 1 new-speed))
                         board)))
     (if death
         (overtrans
@@ -106,6 +106,10 @@
 
     ;; fancy effects
     (nvg:scale! *c* 1 0.8)
+    (let* ((speed (board-speed (gamestate-board state)))
+           (skew (* speed 0.02)))
+      (nvg:skew-x! *c* skew)
+      (nvg:skew-y! *c* skew))
 
     (draw-board
      (gamestate-board state)
